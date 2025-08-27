@@ -69,10 +69,14 @@ pub async fn post_new_user(
     Json(info): Json<CreateUserRequest>,
 ) -> Result<ResponseJson<CreateUserResponse>, StatusCode> {
     // Verify the following once I have supabase up
-    // @purdue.edu email
+    // @purdue.edu email X
     // new user is actually created
     // linkedin exists
     // otherwise throw a status
+
+    if !info.email.ends_with("@purdue.edu") {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
 
     let header = Header {
         algorithm: jwt::AlgorithmType::Hs384,

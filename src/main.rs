@@ -8,12 +8,18 @@ use std::sync::Arc;
 
 extern crate dotenv;
 use dotenv::dotenv;
+use supabase_rs::SupabaseClient;
 
 mod endpoints;
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+
+    let supabase_client = SupabaseClient::new(
+        std::env::var("SUPABASE_URL").expect("No SUPABASE_URL"),
+        std::env::var("SUPABASE_KEY").expect("No SUPABASE_KEY"),
+    ).expect("Failed to establish Supabase connections");
 
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
 
