@@ -15,14 +15,11 @@ use sha2::Sha384;
 
 use supabase_rs::SupabaseClient;
 
-pub struct SupabaseState {
-    pub client: SupabaseClient,
-}
-
 type Claims = BTreeMap<String, String>;
 
-pub struct JWTState {
+pub struct AppState {
     pub private_key: Hmac<Sha384>,
+    pub supabase_client: Arc<SupabaseClient>,
 }
 
 #[derive(Serialize)]
@@ -71,7 +68,7 @@ pub async fn get_root() -> &'static str {
 
 #[axum::debug_handler]
 pub async fn post_new_user(
-    State(jwt_state): State<Arc<JWTState>>,
+    State(app_state): State<Arc<AppState>>,
     Json(info): Json<CreateUserRequest>,
 ) -> Result<ResponseJson<CreateUserResponse>, StatusCode> {
     // Verify the following once I have supabase up
@@ -94,7 +91,7 @@ pub async fn post_new_user(
     claims.insert("linkedin".to_owned(), info.linkedin);
 
     let jwt = Token::new(header, claims)
-        .sign_with_key(&jwt_state.private_key)
+        .sign_with_key(&app_state.private_key)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(ResponseJson(CreateUserResponse {

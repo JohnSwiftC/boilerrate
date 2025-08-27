@@ -22,23 +22,19 @@ async fn main() {
     )
     .expect("Failed to establish Supabase connections");
 
-    let shared_supabase_state = Arc::new(endpoints::SupabaseState {
-        client: supabase_client,
-    });
-
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
 
-    let jwt_state = endpoints::JWTState {
-        private_key: Hmac::new_from_slice(secret.as_bytes()).unwrap(),
-    };
-
-    let shared_jwt_state = Arc::new(jwt_state);
+    let app_state = Arc::new(
+        endpoints::AppState {
+            private_key: Hmac::new_from_slice(secret.as_bytes()).unwrap(),
+            supabase_client: Arc::new(supabase_client),
+        }
+    );
 
     let router = Router::new()
         .route("/", get(endpoints::get_root))
         .route("/create_user", post(endpoints::post_new_user))
-        .with_state(shared_jwt_state)
-        .with_state(shared_supabase_state);
+        .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
         .await
