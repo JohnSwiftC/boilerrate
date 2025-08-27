@@ -127,6 +127,7 @@ dependencies = [
  "hmac",
  "jwt",
  "serde",
+ "sha2",
  "tokio",
 ]
 
