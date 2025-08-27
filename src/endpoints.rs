@@ -13,6 +13,10 @@ use sha2::Sha256;
 
 type Claims = BTreeMap<String, String>;
 
+pub struct JWTState {
+    pub private_key: Hmac<Sha256>,
+}
+
 #[derive(Serialize)]
 struct JWT {
     token: String,
