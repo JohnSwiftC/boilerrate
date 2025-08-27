@@ -22,7 +22,7 @@ async fn main() {
     )
     .expect("Failed to establish Supabase connections");
 
-    let supabase_state = Arc::new(endpoints::SupabaseState {
+    let shared_supabase_state = Arc::new(endpoints::SupabaseState {
         client: supabase_client,
     });
 
@@ -37,7 +37,8 @@ async fn main() {
     let router = Router::new()
         .route("/", get(endpoints::get_root))
         .route("/create_user", post(endpoints::post_new_user))
-        .with_state(shared_jwt_state);
+        .with_state(shared_jwt_state)
+        .with_state(shared_supabase_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
         .await
