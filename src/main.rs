@@ -4,6 +4,7 @@ use axum::{
 };
 
 use hmac::{Hmac, Mac};
+use serde::{Deserialize, Serialize};
 
 use std::sync::Arc;
 
@@ -19,6 +20,7 @@ async fn main() {
 
     let router = Router::new()
         .route("/", get(endpoints::get_root))
+        .route("/create_user", post(endpoints::post_new_user))
         .with_state(shared_jwt_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
