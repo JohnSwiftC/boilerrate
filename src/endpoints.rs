@@ -13,6 +13,12 @@ use axum::{
 use hmac::Hmac;
 use sha2::Sha384;
 
+use supabase_rs::SupabaseClient;
+
+pub struct SupabaseState {
+    pub client: SupabaseClient,
+}
+
 type Claims = BTreeMap<String, String>;
 
 pub struct JWTState {
