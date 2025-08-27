@@ -1,14 +1,14 @@
 use jwt::VerifyWithKey;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap};
+use std::collections::BTreeMap;
 
 use axum::{
+    extract::Json,
     http::{HeaderMap, StatusCode},
     response::Json as ResponseJson,
-    extract::Json,
 };
 
-use hmac::{Hmac};
+use hmac::Hmac;
 use sha2::Sha256;
 
 type Claims = BTreeMap<String, String>;
@@ -21,9 +21,8 @@ struct JWT {
 impl JWT {
     /// Consumes the JWT
     fn verify(self, key: &Hmac<Sha256>) -> Result<Claims, ()> {
-
         if let Ok(claims) = self.token.verify_with_key(key) {
-            return Ok(claims)
+            return Ok(claims);
         }
 
         Err(())
@@ -38,7 +37,7 @@ pub struct CreateUserRequest {
 }
 
 pub struct CreateUserResponse {
-
+    jwt: JWT,
 }
 
 #[derive(Deserialize)]
@@ -57,6 +56,8 @@ pub async fn get_root() -> &'static str {
     "API is up!"
 }
 
-pub async fn post_new_user(Json(info): Json<CreateUserRequest>) -> Result<ResponseJson<JWT>, StatusCode> {
+pub async fn post_new_user(
+    Json(info): Json<CreateUserRequest>,
+) -> Result<ResponseJson<JWT>, StatusCode> {
     Err(StatusCode::UNAUTHORIZED)
 }
