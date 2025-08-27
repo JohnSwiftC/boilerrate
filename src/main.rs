@@ -2,18 +2,23 @@ use axum::{
     Router,
     routing::{get, post},
 };
-
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
-
 use std::sync::Arc;
+
+extern crate dotenv;
+use dotenv::dotenv;
 
 mod endpoints;
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
+
+    let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+
     let jwt_state = endpoints::JWTState {
-        private_key: Hmac::new_from_slice(b"temp secret").unwrap(),
+        private_key: Hmac::new_from_slice(secret.as_bytes()).unwrap(),
     };
 
     let shared_jwt_state = Arc::new(jwt_state);
