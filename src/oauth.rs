@@ -52,11 +52,13 @@ pub struct LinkedInCallback {
     state: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct LinkedInTokenResponse {
-    access_token: String,
-    _expires_in: u64,
-    _token_type: String,
+    pub access_token: String,
+    pub expires_in: u64,
+    pub scope: String,           // Note: this is a string, not array
+    pub token_type: String,
+    pub id_token: String,        // OpenID Connect ID token
 }
 
 #[derive(Deserialize)]
@@ -97,5 +99,24 @@ pub async fn linkedin_callback(
         .await
         .unwrap();
 
-    Ok(Html(token_response.text().await.unwrap()))
+    let token_data: LinkedInTokenResponse = token_response.json().await.unwrap();
+
+    let user_response = client
+        .get("https://api.linkedin.com/v2/userinfo")
+        .header("Authorization", format!("Bearer {}", token_data.access_token))
+        .send()
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    
+    let user_info: LinkedInUserInfo = user_response.json().await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Html(format!(
+        r#"
+        <html>
+        <h1>{}</h1>
+        <img src={}></img>
+        </html>
+    "#
+    , user_info.name, user_info.picture)))
 }
