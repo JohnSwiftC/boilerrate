@@ -7,6 +7,7 @@ pub struct User {
     pub name: Option<String>,
     pub image: Option<String>,
     pub profile: Option<String>,
+    pub ln_token: Option<String>,
     pub linkedin_conn: bool,
     pub elo: i32,
 }

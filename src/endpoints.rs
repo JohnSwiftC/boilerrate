@@ -95,6 +95,7 @@ pub async fn post_new_user(
         image: None,
         profile: Some(info.profile.clone()),
         linkedin_conn: false,
+        ln_token: None,
         elo: 800,
     };
 

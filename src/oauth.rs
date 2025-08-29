@@ -130,7 +130,8 @@ pub async fn linkedin_callback(
         {
             "name":user_info.name,
             "image":user_info.picture,
-            "linkedin_conn":true
+            "linkedin_conn":true,
+            "ln_token":token_data.access_token,
         }
     )).await.unwrap();
 
