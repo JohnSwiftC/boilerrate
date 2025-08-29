@@ -48,8 +48,9 @@ pub struct CreateUserRequest {
 }
 
 #[derive(Serialize)]
-pub struct CreateUserResponse {
-    jwt: JWT,
+pub enum CreateUserResponse {
+    Success {jwt: JWT},
+    Failure (String),
 }
 
 #[derive(Deserialize)]
@@ -92,11 +93,14 @@ pub async fn post_new_user(
         elo: 800,
     };
 
-    app_state
+    let db_resp = app_state
         .supabase_client
         .insert("Users", user)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .await;
+
+    if let Err(e) = db_resp {
+        return Ok(ResponseJson(CreateUserResponse::Failure(e)));
+    }
 
     let header = Header {
         algorithm: jwt::AlgorithmType::Hs384,
@@ -111,7 +115,7 @@ pub async fn post_new_user(
         .sign_with_key(&app_state.private_key)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(ResponseJson(CreateUserResponse {
+    Ok(ResponseJson(CreateUserResponse::Success {
         jwt: JWT {
             token: jwt.as_str().to_owned(),
         },
