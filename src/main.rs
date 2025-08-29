@@ -41,6 +41,7 @@ async fn main() {
         .route("/", get(endpoints::get_root))
         .route("/auth_url", get(oauth::get_linkedin_auth_url))
         .route("/create_user", post(endpoints::post_new_user))
+        .route("/oauth/get_route", get(oauth::get_linkedin_auth_url))
         .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
