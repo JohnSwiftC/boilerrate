@@ -46,6 +46,7 @@ pub async fn get_linkedin_auth_url(
 
 #[derive(Deserialize)]
 pub struct LinkedInCallback {
+    email: String,
     code: String,
     state: Option<String>,
 }
@@ -63,9 +64,8 @@ pub async fn linkedin_callback(
     let redirect_html = format!(
         r#"
         <html>
-        <script>
-            window.location.href = 'homepage';
-        </script>
+        {}
+        <img src={}></img>
         </html>
     "#
     );
