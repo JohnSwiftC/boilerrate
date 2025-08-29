@@ -66,8 +66,8 @@ pub struct CreateUserRequest {
 
 #[derive(Serialize)]
 pub enum CreateUserResponse {
-    Success {jwt: JWT},
-    Failure (String),
+    Success { jwt: JWT },
+    Failure(String),
 }
 
 #[axum::debug_handler]
@@ -80,7 +80,9 @@ pub async fn post_new_user(
     // new user is actually created
 
     if !info.email.ends_with("@purdue.edu") {
-        return Err(StatusCode::UNAUTHORIZED);
+        return Ok(ResponseJson(CreateUserResponse::Failure(String::from(
+            "Email must be an @purdue.edu",
+        ))));
     }
 
     // Ensure that I hash the passwords
@@ -94,10 +96,7 @@ pub async fn post_new_user(
         elo: 800,
     };
 
-    let db_resp = app_state
-        .supabase_client
-        .insert("Users", user)
-        .await;
+    let db_resp = app_state.supabase_client.insert("Users", user).await;
 
     if let Err(e) = db_resp {
         return Ok(ResponseJson(CreateUserResponse::Failure(e)));
