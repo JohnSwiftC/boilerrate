@@ -41,19 +41,6 @@ impl JWT {
 }
 
 #[derive(Deserialize)]
-pub struct CreateUserRequest {
-    email: String,
-    password: String,
-    linkedin: String,
-}
-
-#[derive(Serialize)]
-pub enum CreateUserResponse {
-    Success {jwt: JWT},
-    Failure (String),
-}
-
-#[derive(Deserialize)]
 pub struct ObtainJWTRequest {
     email: String,
     password: String,
@@ -67,6 +54,19 @@ pub struct VerifyJWTClaimsResponse {
 
 pub async fn get_root() -> &'static str {
     "API is up!"
+}
+
+#[derive(Deserialize)]
+pub struct CreateUserRequest {
+    email: String,
+    password: String,
+    linkedin: String,
+}
+
+#[derive(Serialize)]
+pub enum CreateUserResponse {
+    Success {jwt: JWT},
+    Failure (String),
 }
 
 #[axum::debug_handler]
