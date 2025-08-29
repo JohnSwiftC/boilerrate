@@ -62,7 +62,6 @@ pub async fn get_root() -> &'static str {
 pub struct CreateUserRequest {
     email: String,
     password: String,
-    linkedin: String,
 }
 
 #[derive(Serialize)]
@@ -79,8 +78,6 @@ pub async fn post_new_user(
     // Verify the following once I have supabase up
     // @purdue.edu email X
     // new user is actually created
-    // linkedin exists
-    // otherwise throw a status
 
     if !info.email.ends_with("@purdue.edu") {
         return Err(StatusCode::UNAUTHORIZED);
@@ -91,7 +88,9 @@ pub async fn post_new_user(
     let user = db::User {
         email: info.email.clone(),
         hashed_pass: info.password.clone(),
-        linkedin: info.linkedin.clone(),
+        name: None,
+        image: None,
+        linkedin_conn: false,
         elo: 800,
     };
 
@@ -111,7 +110,6 @@ pub async fn post_new_user(
 
     let mut claims: Claims = BTreeMap::new();
     claims.insert("email".to_owned(), info.email);
-    claims.insert("linkedin".to_owned(), info.linkedin);
 
     let jwt = Token::new(header, claims)
         .sign_with_key(&app_state.private_key)

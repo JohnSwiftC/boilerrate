@@ -4,10 +4,12 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use axum::{
-    extract::Json,
     extract::State,
-    http::{HeaderMap, StatusCode},
+    extract::Query,
+    http::{StatusCode},
     response::Json as ResponseJson,
+    response::Html,
+    response::IntoResponse,
 };
 
 use urlencoding;
@@ -32,4 +34,29 @@ pub async fn get_linkedin_auth_url(
     Ok(ResponseJson(serde_json::json!({
         "auth_url": auth_url
     })))
+}
+
+#[derive(Deserialize)]
+pub struct LinkedInCallback {
+    code: String,
+    state: Option<String>,
+}
+
+pub async fn linkedin_callback(
+    State(app_state): State<Arc<AppState>>,
+    Query(params): Query<LinkedInCallback>,
+) -> Result<impl IntoResponse, StatusCode> {
+    
+    // TODO
+    // Get LinkedIn name, photo, attach to user in supabase
+
+    let redirect_html = format!(r#"
+        <html>
+        <script>
+            window.location.href = 'http://localhost:3000/dashboard?token={}';
+        </script>
+        </html>
+    "#, jwt_token);
+    
+    Ok(Html(redirect_html))
 }
