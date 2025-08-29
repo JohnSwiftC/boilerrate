@@ -6,7 +6,7 @@ use std::sync::Arc;
 use axum::{
     extract::State,
     extract::Query,
-    http::{StatusCode},
+    http::{StatusCode, HeaderMap},
     response::Json as ResponseJson,
     response::Html,
     response::IntoResponse,
@@ -50,13 +50,16 @@ pub async fn linkedin_callback(
     // TODO
     // Get LinkedIn name, photo, attach to user in supabase
 
+    // at this point, the browser should have a valid jwt, so connect that auth header
+    // to the linkedin info given here
+
     let redirect_html = format!(r#"
         <html>
         <script>
-            window.location.href = 'http://localhost:3000/dashboard?token={}';
+            window.location.href = 'homepage';
         </script>
         </html>
-    "#, jwt_token);
+    "#);
     
     Ok(Html(redirect_html))
 }
