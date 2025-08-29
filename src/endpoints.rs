@@ -17,6 +17,7 @@ use hmac::Hmac;
 use sha2::Sha384;
 
 use supabase_rs::SupabaseClient;
+use serde_json::Value;
 
 pub type Claims = BTreeMap<String, String>;
 
@@ -122,4 +123,41 @@ pub async fn post_new_user(
             token: jwt.as_str().to_owned(),
         },
     }))
+}
+
+#[derive(Deserialize)]
+struct LoginRequest {
+    email: String,
+    password: String,
+}
+
+#[derive(Serialize)]
+enum LoginResponse {
+    Success { jwt: JWT },
+    Failure(String),
+}
+
+pub async fn login(
+    State(app_state): State<Arc<AppState>>,
+    Json(info): Json<LoginRequest>,
+) -> Result<ResponseJson<LoginResponse>, StatusCode> {
+    let user = app_state.supabase_client
+        .select("Users")
+        .eq("email", &info.email)
+        .execute()
+        .await
+        .map_err(|_| StatusCode::NOT_FOUND)?;
+
+    let user = match user.get(0) {
+        Some(u) => u,
+        None => return Ok(ResponseJson(LoginResponse::Failure(String::from("User does not exist"))))
+    };
+
+    if info.password != user["password"] {
+        return Ok(ResponseJson(LoginResponse::Failure(String::from("Incorrect password"))))
+    }
+
+    // Finish handling the generation of a new jwt
+
+    Err(StatusCode::INTERNAL_SERVER_ERROR)
 }
