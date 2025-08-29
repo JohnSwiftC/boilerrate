@@ -84,7 +84,7 @@ pub async fn linkedin_callback(
     let token_params = [
         ("grant_type", "authorization_code"),
         ("code", &params.code),
-        ("redirect_uri", "http://localhost:3000/oauth/callback"),
+        ("redirect_uri", &format!("http://localhost:3000/oauth/callback?email={}", params.email)),
         ("client_id", &app_state.l_config.client_id),
         ("client_secret", &app_state.l_config.client_secret),
     ];
@@ -97,35 +97,5 @@ pub async fn linkedin_callback(
         .await
         .unwrap();
 
-    println!("{:#?}", token_response.text().await.unwrap());
-    
-    let token_data: LinkedInTokenResponse = token_response
-        .json()
-        .await
-        .unwrap();
-    
-    let profile_response = client
-        .get("https://api.linkedin.com/v2/userinfo")
-        .header("Authorization", format!("Bearer {}", token_data.access_token))
-        .send()
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    let profile: LinkedInUserInfo = profile_response
-        .json()
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    
-    let full_name = format!("{} {}", profile.name, profile.family_name);
-
-    let redirect_html = format!(
-        r#"
-        <html>
-        {}
-        <img src={}></img>
-        </html>
-    "#
-    , full_name, profile.picture);
-
-    Ok(Html(redirect_html))
+    Ok(Html(token_response.text().await.unwrap()))
 }
