@@ -11,6 +11,7 @@ use axum_extra::TypedHeader;
 use headers::{Authorization, authorization::Bearer};
 
 use crate::endpoints::{AppState, Claims, JWT};
+use urlencoding;
 
 pub struct LinkedInConfig {
     pub client_id: String,
@@ -30,13 +31,13 @@ pub async fn get_linkedin_auth_url(
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     let redirect_url = format!(
-        "http://localhost:3000/auth/callback?email={}",
+        "http://localhost:3000/oauth/callback?email={}",
         claims["email"]
     );
 
     let auth_url = format!(
-        "https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id={}&redirect_uri={}&scope=r_liteprofile",
-        app_state.l_config.client_id, redirect_url,
+        "https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id={}&redirect_uri={}&scope=openid%20profile%20email",
+        app_state.l_config.client_id, urlencoding::encode(&redirect_url),
     );
 
     Ok(ResponseJson(serde_json::json!({
@@ -54,29 +55,19 @@ pub struct LinkedInCallback {
 #[derive(Deserialize)]
 pub struct LinkedInTokenResponse {
     access_token: String,
-    expires_in: u64,
-    token_type: String,
+    _expires_in: u64,
+    _token_type: String,
 }
 
 #[derive(Deserialize)]
-pub struct LinkedInProfile {
-    id: String,
-    #[serde(rename = "localizedFirstName")]
-    first_name: String,
-    #[serde(rename = "localizedLastName")]
-    last_name: String,
-}
-
-#[derive(Deserialize)]
-pub struct LinkedInProfilePicture {
-    #[serde(rename = "profilePicture")]
-    profile_picture: ProfilePictureInfo,
-}
-
-#[derive(Deserialize)]
-pub struct ProfilePictureInfo {
-    #[serde(rename = "displayImage")]
-    display_image: String,
+pub struct LinkedInUserInfo {
+    pub sub: String,       
+    pub name: String,          
+    pub given_name: String,    
+    pub family_name: String,
+    pub picture: String,
+    pub email: String,
+    pub email_verified: bool,
 }
 
 use reqwest::Client;
@@ -93,7 +84,7 @@ pub async fn linkedin_callback(
     let token_params = [
         ("grant_type", "authorization_code"),
         ("code", &params.code),
-        ("redirect_uri", "http://localhost:3000/auth/callback"),
+        ("redirect_uri", "http://localhost:3000/oauth/callback"),
         ("client_id", &app_state.l_config.client_id),
         ("client_secret", &app_state.l_config.client_secret),
     ];
@@ -104,19 +95,28 @@ pub async fn linkedin_callback(
         .form(&token_params)
         .send()
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .unwrap();
+
+    println!("{:#?}", token_response.text().await.unwrap());
     
     let token_data: LinkedInTokenResponse = token_response
         .json()
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .unwrap();
     
     let profile_response = client
-        .get("https://api.linkedin.com/v2/people/~:(id,localizedFirstName,localizedLastName)")
+        .get("https://api.linkedin.com/v2/userinfo")
         .header("Authorization", format!("Bearer {}", token_data.access_token))
         .send()
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let profile: LinkedInUserInfo = profile_response
+        .json()
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    
+    let full_name = format!("{} {}", profile.name, profile.family_name);
 
     let redirect_html = format!(
         r#"
@@ -125,7 +125,7 @@ pub async fn linkedin_callback(
         <img src={}></img>
         </html>
     "#
-    );
+    , full_name, profile.picture);
 
     Ok(Html(redirect_html))
 }
