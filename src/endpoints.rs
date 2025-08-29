@@ -62,6 +62,7 @@ pub async fn get_root() -> &'static str {
 pub struct CreateUserRequest {
     email: String,
     password: String,
+    profile: String
 }
 
 #[derive(Serialize)]
@@ -92,6 +93,7 @@ pub async fn post_new_user(
         hashed_pass: info.password.clone(),
         name: None,
         image: None,
+        profile: Some(info.profile.clone()),
         linkedin_conn: false,
         elo: 800,
     };

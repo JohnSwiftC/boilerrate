@@ -6,6 +6,7 @@ pub struct User {
     pub hashed_pass: String,
     pub name: Option<String>,
     pub image: Option<String>,
+    pub profile: Option<String>,
     pub linkedin_conn: bool,
     pub elo: i32,
 }

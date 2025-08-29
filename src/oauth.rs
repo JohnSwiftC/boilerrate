@@ -126,6 +126,14 @@ pub async fn linkedin_callback(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
+    app_state.supabase_client.update_with_column_name("Users", "email", &params.email, serde_json::json!(
+        {
+            "name":user_info.name,
+            "image":user_info.picture,
+            "linkedin_conn":true
+        }
+    )).await.unwrap();
+
     Ok(Html(format!(
         r#"
         <html>
