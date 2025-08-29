@@ -1,4 +1,3 @@
-use jwt::{Header, SignWithKey, Token, VerifyWithKey};
 use serde::{Deserialize, Serialize};
 
 use std::sync::Arc;
@@ -10,8 +9,6 @@ use axum::{
 
 use axum_extra::TypedHeader;
 use headers::{Authorization, authorization::Bearer};
-
-use urlencoding;
 
 use crate::endpoints::{AppState, Claims, JWT};
 
@@ -38,12 +35,12 @@ pub async fn get_linkedin_auth_url(
     );
 
     let auth_url = format!(
-        "https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id={}&redirect_uri={}&scope=r_liteprofile%20r_emailaddress",
+        "https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id={}&redirect_uri={}&scope=r_liteprofile",
         app_state.l_config.client_id, redirect_url,
     );
 
     Ok(ResponseJson(serde_json::json!({
-        "auth_url": urlencoding::encode(&auth_url),
+        "auth_url": auth_url,
     })))
 }
 
