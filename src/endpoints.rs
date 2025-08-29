@@ -18,7 +18,7 @@ use sha2::Sha384;
 
 use supabase_rs::SupabaseClient;
 
-type Claims = BTreeMap<String, String>;
+pub type Claims = BTreeMap<String, String>;
 
 pub struct AppState {
     pub private_key: Hmac<Sha384>,
@@ -27,13 +27,13 @@ pub struct AppState {
 }
 
 #[derive(Serialize)]
-struct JWT {
-    token: String,
+pub struct JWT {
+    pub token: String,
 }
 
 impl JWT {
     /// Consumes the JWT
-    fn verify(self, key: &Hmac<Sha384>) -> Result<Claims, ()> {
+    pub fn verify(self, key: &Hmac<Sha384>) -> Result<Claims, ()> {
         if let Ok(claims) = self.token.verify_with_key(key) {
             return Ok(claims);
         }

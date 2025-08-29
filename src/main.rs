@@ -29,7 +29,6 @@ async fn main() {
     let linkedin_config = oauth::LinkedInConfig {
         client_id: std::env::var("L_CID").expect("No L_CID"),
         client_secret: std::env::var("L_SECRET").expect("No L_SECRET"),
-        redirect_uri: String::from("placeholder"),
     };
 
     let app_state = Arc::new(endpoints::AppState {
