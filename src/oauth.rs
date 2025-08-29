@@ -30,7 +30,7 @@ pub async fn get_linkedin_auth_url(
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     let redirect_url = format!(
-        "http://boilerrate.io/auth/callback?email={}",
+        "http://localhost:3000/auth/callback?email={}",
         claims["email"]
     );
 
