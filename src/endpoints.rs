@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::db;
+use crate::oauth;
 
 use axum::{
     extract::Json,
@@ -22,6 +23,7 @@ type Claims = BTreeMap<String, String>;
 pub struct AppState {
     pub private_key: Hmac<Sha384>,
     pub supabase_client: Arc<SupabaseClient>,
+    pub l_config: Arc<oauth::LinkedInConfig>,
 }
 
 #[derive(Serialize)]
