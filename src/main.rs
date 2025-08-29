@@ -10,6 +10,7 @@ extern crate dotenv;
 use dotenv::dotenv;
 use supabase_rs::{SupabaseClient, graphql::utils::format_endpoint::endpoint};
 
+mod db;
 mod endpoints;
 
 #[tokio::main]
@@ -24,12 +25,10 @@ async fn main() {
 
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
 
-    let app_state = Arc::new(
-        endpoints::AppState {
-            private_key: Hmac::new_from_slice(secret.as_bytes()).unwrap(),
-            supabase_client: Arc::new(supabase_client),
-        }
-    );
+    let app_state = Arc::new(endpoints::AppState {
+        private_key: Hmac::new_from_slice(secret.as_bytes()).unwrap(),
+        supabase_client: Arc::new(supabase_client),
+    });
 
     let router = Router::new()
         .route("/", get(endpoints::get_root))

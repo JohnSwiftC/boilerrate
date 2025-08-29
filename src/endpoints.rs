@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use crate::db;
+
 use axum::{
     extract::Json,
     extract::State,
@@ -80,6 +82,21 @@ pub async fn post_new_user(
     if !info.email.ends_with("@purdue.edu") {
         return Err(StatusCode::UNAUTHORIZED);
     }
+
+    // Ensure that I hash the passwords
+
+    let user = db::User {
+        email: info.email.clone(),
+        hashed_pass: info.password.clone(),
+        linkedin: info.linkedin.clone(),
+        elo: 800,
+    };
+
+    app_state
+        .supabase_client
+        .insert("Users", user)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let header = Header {
         algorithm: jwt::AlgorithmType::Hs384,
