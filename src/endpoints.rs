@@ -29,6 +29,7 @@ pub struct AppState {
     pub private_key: Hmac<Sha384>,
     pub supabase_client: Arc<SupabaseClient>,
     pub l_config: Arc<oauth::LinkedInConfig>,
+    pub mailer: SmtpTransport,
 }
 
 #[derive(Serialize)]
@@ -89,6 +90,11 @@ pub enum CreateUserResponse {
 }
 
 use std::time::{SystemTime, UNIX_EPOCH};
+use lettre::{
+    message::header::ContentType,
+    transport::smtp::authentication::Credentials,
+    Message, SmtpTransport, Transport,
+};
 
 #[axum::debug_handler]
 pub async fn post_new_user(
@@ -122,14 +128,24 @@ pub async fn post_new_user(
     claims.insert("linkedin".to_owned(), info.profile);
     claims.insert("verification_ts".to_owned(), time.as_secs().to_string());
 
+    let email = Message::builder()
+        .from("verify@boilerrate.com".parse().unwrap())
+        .to(claims["email"].parse().unwrap())
+        .subject("BoilerRate Verification")
+        .header(ContentType::TEXT_PLAIN);
+    
     let jwt = Token::new(header, claims)
         .sign_with_key(&app_state.private_key)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    // Should email a link to /verify?token={}
-    // just putting link in response for backend testing
+    let verification_link = format!("http://localhost:3000/verify?token={}", jwt.as_str());
 
-    Ok(ResponseJson(CreateUserResponse::Success(jwt.as_str().to_owned())))
+    let email = email.body(verification_link)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    app_state.mailer.send(&email).unwrap();
+
+    Ok(ResponseJson(CreateUserResponse::Success("Email sent to user".to_owned())))
 }
 
 #[derive(Deserialize)]
