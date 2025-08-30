@@ -1,7 +1,10 @@
+use axum::extract::Query;
+use axum::response::IntoResponse;
 use jwt::{Header, SignWithKey, Token, VerifyWithKey};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use crate::db;
 use crate::oauth;
@@ -11,6 +14,7 @@ use axum::{
     extract::State,
     http::{HeaderMap, StatusCode},
     response::Json as ResponseJson,
+    response::Html,
 };
 
 use hmac::Hmac;
@@ -80,9 +84,11 @@ pub struct CreateUserRequest {
 
 #[derive(Serialize)]
 pub enum CreateUserResponse {
-    Success { jwt: JWT },
+    Success(String),
     Failure(String),
 }
+
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[axum::debug_handler]
 pub async fn post_new_user(
@@ -99,14 +105,76 @@ pub async fn post_new_user(
         ))));
     }
 
-    // Ensure that I hash the passwords
+    let header = Header {
+        algorithm: jwt::AlgorithmType::Hs384,
+        ..Default::default()
+    };
+
+    let mut time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap();
+
+    time += Duration::from_secs(1800);
+
+    let mut claims: Claims = BTreeMap::new();
+    claims.insert("email".to_owned(), info.email);
+    claims.insert("password".to_owned(), info.password);
+    claims.insert("linkedin".to_owned(), info.profile);
+    claims.insert("verification_ts".to_owned(), time.as_secs().to_string());
+
+    let jwt = Token::new(header, claims)
+        .sign_with_key(&app_state.private_key)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Should email a link to /verify?token={}
+    // just putting link in response for backend testing
+
+    Ok(ResponseJson(CreateUserResponse::Success(jwt.as_str().to_owned())))
+}
+
+#[derive(Deserialize)]
+pub struct VerificationRequest {
+    token: String
+}
+
+pub async fn verify_registration(
+    Query(params): Query<VerificationRequest>,
+    State(app_state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let jwt = JWT {
+        token: params.token,
+    };
+
+    let claims = jwt.verify(&app_state.private_key)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Verify that the token is still valid for its timestamp
+    let current_time: Duration = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap();
+
+    let stamp_time: Duration = Duration::from_secs(
+        claims["verification_ts"].parse().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    );
+
+    if current_time > stamp_time {
+        return Ok(Html(format!(
+            r#"
+                <html>
+                 <h1>
+                 Your account creation request has expired. Please try again.
+                 </h1>
+                </html>
+            "#
+        )))
+    }
 
     let user = db::User {
-        email: info.email.clone(),
-        hashed_pass: info.password.clone(),
+        email: claims["email"].clone(),
+        hashed_pass: claims["password"].clone(),
         name: None,
         image: None,
-        profile: Some(info.profile.clone()),
+        profile: Some(claims["linkedin"].clone()),
         linkedin_conn: false,
         ln_token: None,
         elo: 800,
@@ -115,26 +183,19 @@ pub async fn post_new_user(
     let db_resp = app_state.supabase_client.insert("Users", user).await;
 
     if let Err(e) = db_resp {
-        return Ok(ResponseJson(CreateUserResponse::Failure(e)));
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
     }
 
-    let header = Header {
-        algorithm: jwt::AlgorithmType::Hs384,
-        ..Default::default()
-    };
-
-    let mut claims: Claims = BTreeMap::new();
-    claims.insert("email".to_owned(), info.email);
-
-    let jwt = Token::new(header, claims)
-        .sign_with_key(&app_state.private_key)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    Ok(ResponseJson(CreateUserResponse::Success {
-        jwt: JWT {
-            token: jwt.as_str().to_owned(),
-        },
-    }))
+    // Redirect user to frontend login page, maybe with a flag for a "email verified" notif
+    Ok(Html(format!(
+        r#"
+            <html>
+            <h1>
+                Email verified, please login
+            </h1>
+            </html>
+        "#
+    )))
 }
 
 #[derive(Deserialize)]
