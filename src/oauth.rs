@@ -26,13 +26,9 @@ pub async fn get_linkedin_auth_url(
         token: auth.token().to_owned(),
     };
 
-    let claims: Claims = jwt
-        .verify(&app_state.private_key)
-        .map_err(|_| StatusCode::UNAUTHORIZED)?;
-
     let redirect_url = format!(
-        "http://localhost:3000/oauth/callback?email={}",
-        claims["email"]
+        "http://localhost:3000/oauth/callback?token={}",
+        jwt.token,
     );
 
     let auth_url = format!(
@@ -48,7 +44,7 @@ pub async fn get_linkedin_auth_url(
 
 #[derive(Deserialize)]
 pub struct LinkedInCallback {
-    email: String,
+    token: String,
     code: String,
     state: Option<String>,
 }
@@ -90,8 +86,8 @@ pub async fn linkedin_callback(
         (
             "redirect_uri",
             &format!(
-                "http://localhost:3000/oauth/callback?email={}",
-                params.email
+                "http://localhost:3000/oauth/callback?token={}",
+                params.token
             ),
         ),
         ("client_id", &app_state.l_config.client_id),
@@ -126,12 +122,19 @@ pub async fn linkedin_callback(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
+    let jwt = JWT {
+        token: params.token
+    };
+
+    let claims = jwt.verify(&app_state.private_key)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
     app_state
         .supabase_client
         .update_with_column_name(
             "Users",
             "email",
-            &params.email,
+            &claims["email"],
             serde_json::json!(
                 {
                     "name":user_info.name,
