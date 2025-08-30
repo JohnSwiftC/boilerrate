@@ -138,13 +138,13 @@ pub async fn post_new_user(
 }
 
 #[derive(Deserialize)]
-struct LoginRequest {
+pub struct LoginRequest {
     email: String,
     password: String,
 }
 
 #[derive(Serialize)]
-enum LoginResponse {
+pub enum LoginResponse {
     Success { jwt: JWT },
     Failure(String),
 }
@@ -170,13 +170,17 @@ pub async fn login(
         }
     };
 
-    if info.password != user["password"] {
+    if info.password != user["hashed_pass"] {
         return Ok(ResponseJson(LoginResponse::Failure(String::from(
             "Incorrect password",
         ))));
     }
 
-    // Finish handling the generation of a new jwt
+    let mut claims: Claims = BTreeMap::new();
+    claims.insert("email".to_owned(), info.email);
 
-    Err(StatusCode::INTERNAL_SERVER_ERROR)
+    let jwt = JWT::new(claims, &app_state.private_key)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(ResponseJson(LoginResponse::Success { jwt }))
 }
