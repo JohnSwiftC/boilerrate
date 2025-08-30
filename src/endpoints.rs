@@ -16,8 +16,8 @@ use axum::{
 use hmac::Hmac;
 use sha2::Sha384;
 
-use supabase_rs::SupabaseClient;
 use serde_json::Value;
+use supabase_rs::SupabaseClient;
 
 pub type Claims = BTreeMap<String, String>;
 
@@ -33,6 +33,18 @@ pub struct JWT {
 }
 
 impl JWT {
+    pub fn new(claims: Claims, key: &Hmac<Sha384>) -> Result<Self, jwt::Error> {
+        let header = Header {
+            algorithm: jwt::AlgorithmType::Hs384,
+            ..Default::default()
+        };
+
+        let jwt = Token::new(header, claims).sign_with_key(key)?;
+
+        Ok(Self {
+            token: jwt.as_str().to_owned(),
+        })
+    }
     /// Consumes the JWT
     pub fn verify(self, key: &Hmac<Sha384>) -> Result<Claims, ()> {
         if let Ok(claims) = self.token.verify_with_key(key) {
@@ -63,7 +75,7 @@ pub async fn get_root() -> &'static str {
 pub struct CreateUserRequest {
     email: String,
     password: String,
-    profile: String
+    profile: String,
 }
 
 #[derive(Serialize)]
@@ -141,7 +153,8 @@ pub async fn login(
     State(app_state): State<Arc<AppState>>,
     Json(info): Json<LoginRequest>,
 ) -> Result<ResponseJson<LoginResponse>, StatusCode> {
-    let user = app_state.supabase_client
+    let user = app_state
+        .supabase_client
         .select("Users")
         .eq("email", &info.email)
         .execute()
@@ -150,11 +163,17 @@ pub async fn login(
 
     let user = match user.get(0) {
         Some(u) => u,
-        None => return Ok(ResponseJson(LoginResponse::Failure(String::from("User does not exist"))))
+        None => {
+            return Ok(ResponseJson(LoginResponse::Failure(String::from(
+                "User does not exist",
+            ))));
+        }
     };
 
     if info.password != user["password"] {
-        return Ok(ResponseJson(LoginResponse::Failure(String::from("Incorrect password"))))
+        return Ok(ResponseJson(LoginResponse::Failure(String::from(
+            "Incorrect password",
+        ))));
     }
 
     // Finish handling the generation of a new jwt
