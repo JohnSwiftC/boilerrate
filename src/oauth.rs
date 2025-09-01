@@ -201,6 +201,7 @@ pub async fn linkedin_callback(
                     "image":p,
                     "linkedin_conn":true,
                     "ln_token":token_data.access_token,
+                    "profile":user_info.vanity_name,
                 }
             )
         },
@@ -210,6 +211,7 @@ pub async fn linkedin_callback(
                     "name":format!("{} {}", user_info.localized_first_name, user_info.localized_last_name),
                     "linkedin_conn":true,
                     "ln_token":token_data.access_token,
+                    "profile":user_info.vanity_name,
                 }
             )
         }
