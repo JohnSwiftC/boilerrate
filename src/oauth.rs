@@ -30,7 +30,7 @@ pub async fn get_linkedin_auth_url(
         "https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id={}&redirect_uri={}&scope=r_basicprofile&state={}",
         app_state.l_config.client_id,
         urlencoding::encode("http://localhost:3000/oauth/callback"),
-        jwt.token,
+        urlencoding::encode(&jwt.token),
     );
 
     Ok(ResponseJson(serde_json::json!({
@@ -48,9 +48,9 @@ pub struct LinkedInCallback {
 pub struct LinkedInTokenResponse {
     pub access_token: String,
     pub expires_in: u64,
-    pub scope: String, // Note: this is a string, not array
-    pub token_type: String,
-    pub id_token: String, // OpenID Connect ID token
+    pub refresh_token: String,
+    pub refresh_token_expires_in: u32,
+    pub scope: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -61,9 +61,32 @@ pub struct LinkedInUserInfo {
     #[serde(rename = "localizedLastName")] 
     pub localized_last_name: String,
     #[serde(rename = "profilePicture")]
-    pub profile_picture: Option<String>, // Direct URL to profile picture
+    pub profile_picture: Option<ProfilePicture>, // Direct URL to profile picture
     #[serde(rename = "vanityName")]
     pub vanity_name: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ProfilePicture {
+    #[serde(rename = "displayImage")]
+    pub display_image: String, // URN
+    #[serde(rename = "displayImage~")]
+    pub display_image_data: Option<DisplayImageData>, // Actual URLs
+}
+
+#[derive(Deserialize, Debug)]
+pub struct DisplayImageData {
+    pub elements: Vec<ImageElement>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ImageElement {
+    pub identifiers: Vec<ImageIdentifier>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ImageIdentifier {
+    pub identifier: String, // This is the actual image URL
 }
 
 use reqwest::Client;
@@ -118,7 +141,7 @@ pub async fn linkedin_callback(
     println!("Token received, making user info request...");
     
     let user_response = client
-        .get("https://api.linkedin.com/v2/me")
+        .get("https://api.linkedin.com/v2/me?projection=(id,localizedFirstName,localizedLastName,vanityName,profilePicture(displayImage~:playableStreams))")
         .header(
             "Authorization",
             format!("Bearer {}", token_data.access_token),
@@ -160,7 +183,38 @@ pub async fn linkedin_callback(
 
     println!("JWT verified, updating database...");
 
-    let profile_pic = user_info.profile_picture.unwrap_or_default();
+    let profile_pic = user_info.profile_picture
+            .and_then(|p| p.display_image_data)
+            .and_then(|d| d.elements.into_iter().next())
+            .and_then(|i| i.identifiers.into_iter().next())
+            .and_then(|i| Some(i.identifier.clone()));
+
+    let mut link_clone = String::from("");
+
+    let db_update = match profile_pic {
+        Some(p) => {
+            link_clone = p.clone();
+
+            serde_json::json!(
+                {
+                    "name":format!("{} {}", user_info.localized_first_name, user_info.localized_last_name),
+                    "image":p,
+                    "linkedin_conn":true,
+                    "ln_token":token_data.access_token,
+                }
+            )
+        },
+        None => {
+            serde_json::json!(
+                {
+                    "name":format!("{} {}", user_info.localized_first_name, user_info.localized_last_name),
+                    "linkedin_conn":true,
+                    "ln_token":token_data.access_token,
+                }
+            )
+        }
+    };
+
     
     app_state
         .supabase_client
@@ -168,14 +222,7 @@ pub async fn linkedin_callback(
             "Users",
             "email",
             &claims["email"],
-            serde_json::json!(
-                {
-                    "name":format!("{} {}", user_info.localized_first_name, user_info.localized_last_name),
-                    "image":profile_pic.clone(),
-                    "linkedin_conn":true,
-                    "ln_token":token_data.access_token,
-                }
-            ),
+            db_update,
         )
         .await
         .map_err(|e| {
@@ -192,6 +239,6 @@ pub async fn linkedin_callback(
         <img src="{}"></img>
         </html>
     "#,
-        user_info.localized_first_name, user_info.localized_last_name, profile_pic,
+        user_info.localized_first_name, user_info.localized_last_name, link_clone
     )))
 }
