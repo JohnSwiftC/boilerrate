@@ -80,7 +80,6 @@ pub async fn get_root() -> &'static str {
 pub struct CreateUserRequest {
     email: String,
     password: String,
-    profile: String,
 }
 
 #[derive(Serialize)]
@@ -125,7 +124,6 @@ pub async fn post_new_user(
     let mut claims: Claims = BTreeMap::new();
     claims.insert("email".to_owned(), info.email);
     claims.insert("password".to_owned(), info.password);
-    claims.insert("linkedin".to_owned(), info.profile);
     claims.insert("verification_ts".to_owned(), time.as_secs().to_string());
 
     let email = Message::builder()
@@ -190,7 +188,7 @@ pub async fn verify_registration(
         hashed_pass: claims["password"].clone(),
         name: None,
         image: None,
-        profile: Some(claims["linkedin"].clone()),
+        profile: None,
         linkedin_conn: false,
         ln_token: None,
         elo: 800,
