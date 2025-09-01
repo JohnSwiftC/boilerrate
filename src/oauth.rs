@@ -32,7 +32,7 @@ pub async fn get_linkedin_auth_url(
     );
 
     let auth_url = format!(
-        "https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id={}&redirect_uri={}&scope=openid%20profile%20email",
+        "https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id={}&redirect_uri={}&scope=r_basicprofile",
         app_state.l_config.client_id,
         urlencoding::encode(&redirect_url),
     );
