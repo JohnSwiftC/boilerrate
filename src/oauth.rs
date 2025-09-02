@@ -29,7 +29,7 @@ pub async fn get_linkedin_auth_url(
     let auth_url = format!(
         "https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id={}&redirect_uri={}&scope=r_basicprofile&state={}",
         app_state.l_config.client_id,
-        urlencoding::encode("http://localhost:3000/oauth/callback"),
+        urlencoding::encode("https://api.boilerrate.com/oauth/callback"),
         urlencoding::encode(&jwt.token),
     );
 
@@ -103,7 +103,7 @@ pub async fn linkedin_callback(
         ("code", &params.code),
         (
             "redirect_uri",
-            "http://localhost:3000/oauth/callback",
+            "https://api.boilerrate.com/oauth/callback",
         ),
         ("client_id", &app_state.l_config.client_id),
         ("client_secret", &app_state.l_config.client_secret),

@@ -136,7 +136,7 @@ pub async fn post_new_user(
         .sign_with_key(&app_state.private_key)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let verification_link = format!("http://localhost:3000/verify?token={}", jwt.as_str());
+    let verification_link = format!("https://api.boilerrate.com/verify?token={}", jwt.as_str());
 
     let email = email.body(verification_link)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
