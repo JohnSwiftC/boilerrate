@@ -14,11 +14,6 @@ mod db;
 mod endpoints;
 mod oauth;
 
-use lettre::{
-    Message, SmtpTransport, Transport, message::header::ContentType,
-    transport::smtp::authentication::Credentials,
-};
-
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -36,21 +31,11 @@ async fn main() {
         client_secret: std::env::var("L_SECRET").expect("No L_SECRET"),
     };
 
-    let smtp_name = std::env::var("SMTP_NAME").expect("No SMTP_NAME");
-    let smtp_code = std::env::var("SMTP_CODE").expect("No SMTP_CODE");
-
-    let creds = Credentials::new(smtp_name, smtp_code);
-
-    let mailer = SmtpTransport::relay("smtp.gmail.com")
-        .unwrap()
-        .credentials(creds)
-        .build();
 
     let app_state = Arc::new(endpoints::AppState {
         private_key: Hmac::new_from_slice(secret.as_bytes()).unwrap(),
         supabase_client: Arc::new(supabase_client),
         l_config: Arc::new(linkedin_config),
-        mailer,
     });
 
     let router = Router::new()
