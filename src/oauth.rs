@@ -58,7 +58,7 @@ pub struct LinkedInUserInfo {
     pub id: String,
     #[serde(rename = "localizedFirstName")]
     pub localized_first_name: String,
-    #[serde(rename = "localizedLastName")] 
+    #[serde(rename = "localizedLastName")]
     pub localized_last_name: String,
     #[serde(rename = "profilePicture")]
     pub profile_picture: Option<ProfilePicture>, // Direct URL to profile picture
@@ -96,15 +96,12 @@ pub async fn linkedin_callback(
     Query(params): Query<LinkedInCallback>,
 ) -> Result<impl IntoResponse, StatusCode> {
     println!("LinkedIn callback started with params: {:?}", params);
-    
+
     let client = Client::new();
     let token_params = [
         ("grant_type", "authorization_code"),
         ("code", &params.code),
-        (
-            "redirect_uri",
-            "https://api.boilerrate.com/oauth/callback",
-        ),
+        ("redirect_uri", "https://api.boilerrate.com/oauth/callback"),
         ("client_id", &app_state.l_config.client_id),
         ("client_secret", &app_state.l_config.client_secret),
     ];
@@ -122,7 +119,7 @@ pub async fn linkedin_callback(
         })?;
 
     println!("Token response status: {}", token_response.status());
-    
+
     // Check if the response is successful before trying to parse
     if !token_response.status().is_success() {
         let error_text = token_response.text().await.unwrap_or_default();
@@ -130,16 +127,13 @@ pub async fn linkedin_callback(
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     }
 
-    let token_data: LinkedInTokenResponse = token_response
-        .json()
-        .await
-        .map_err(|e| {
-            println!("Failed to parse token response: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let token_data: LinkedInTokenResponse = token_response.json().await.map_err(|e| {
+        println!("Failed to parse token response: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     println!("Token received, making user info request...");
-    
+
     let user_response = client
         .get("https://api.linkedin.com/v2/me?projection=(id,localizedFirstName,localizedLastName,vanityName,profilePicture(displayImage~:playableStreams))")
         .header(
@@ -154,40 +148,37 @@ pub async fn linkedin_callback(
         })?;
 
     println!("User response status: {}", user_response.status());
-    
+
     if !user_response.status().is_success() {
         let error_text = user_response.text().await.unwrap_or_default();
         println!("LinkedIn user info error response: {}", error_text);
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     }
 
-    let user_info: LinkedInUserInfo = user_response
-        .json()
-        .await
-        .map_err(|e| {
-            println!("Failed to parse user info response: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let user_info: LinkedInUserInfo = user_response.json().await.map_err(|e| {
+        println!("Failed to parse user info response: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     println!("User info received: {:?}", user_info);
 
     let jwt = JWT {
-        token: params.state
+        token: params.state,
     };
 
-    let claims = jwt.verify(&app_state.private_key)
-        .map_err(|e| {
-            println!("JWT verification failed: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let claims = jwt.verify(&app_state.private_key).map_err(|e| {
+        println!("JWT verification failed: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     println!("JWT verified, updating database...");
 
-    let profile_pic = user_info.profile_picture
-            .and_then(|p| p.display_image_data)
-            .and_then(|d| d.elements.into_iter().next())
-            .and_then(|i| i.identifiers.into_iter().next())
-            .and_then(|i| Some(i.identifier.clone()));
+    let profile_pic = user_info
+        .profile_picture
+        .and_then(|p| p.display_image_data)
+        .and_then(|d| d.elements.into_iter().next())
+        .and_then(|i| i.identifiers.into_iter().next())
+        .and_then(|i| Some(i.identifier.clone()));
 
     let mut link_clone = String::from("");
 
@@ -204,7 +195,7 @@ pub async fn linkedin_callback(
                     "profile":user_info.vanity_name,
                 }
             )
-        },
+        }
         None => {
             serde_json::json!(
                 {
@@ -217,15 +208,9 @@ pub async fn linkedin_callback(
         }
     };
 
-    
     app_state
         .supabase_client
-        .update_with_column_name(
-            "Users",
-            "email",
-            &claims["email"],
-            db_update,
-        )
+        .update_with_column_name("Users", "email", &claims["email"], db_update)
         .await
         .map_err(|e| {
             println!("Database update failed: {:?}", e);

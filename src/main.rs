@@ -10,7 +10,7 @@ extern crate dotenv;
 use dotenv::dotenv;
 use supabase_rs::{SupabaseClient, graphql::utils::format_endpoint::endpoint};
 
-use mailgun_rs::{Mailgun};
+use mailgun_rs::Mailgun;
 
 mod db;
 mod endpoints;

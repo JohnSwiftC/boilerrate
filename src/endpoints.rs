@@ -13,8 +13,8 @@ use axum::{
     extract::Json,
     extract::State,
     http::{HeaderMap, StatusCode},
-    response::Json as ResponseJson,
     response::Html,
+    response::Json as ResponseJson,
 };
 
 use hmac::Hmac;
@@ -23,7 +23,7 @@ use sha2::Sha384;
 use serde_json::Value;
 use supabase_rs::SupabaseClient;
 
-use mailgun_rs::{Mailgun};
+use mailgun_rs::{EmailAddress, Mailgun, MailgunRegion, Message};
 
 pub type Claims = BTreeMap<String, String>;
 
@@ -112,33 +112,58 @@ pub async fn post_new_user(
         ..Default::default()
     };
 
-    let mut time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap();
+    let mut time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
 
     time += Duration::from_secs(1800);
 
     let mut claims: Claims = BTreeMap::new();
-    claims.insert("email".to_owned(), info.email);
+    claims.insert("email".to_owned(), info.email.clone());
     claims.insert("password".to_owned(), info.password);
     claims.insert("verification_ts".to_owned(), time.as_secs().to_string());
 
-    
     let jwt = Token::new(header, claims)
         .sign_with_key(&app_state.private_key)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let verification_link = format!("https://api.boilerrate.com/verify?token={}", jwt.as_str());
 
-    
-    // Actually use postgun api for this, need to set up smtp
+    // Actually use postgun api for this, thanks railway
 
-    Ok(ResponseJson(CreateUserResponse::Success("Email sent to user".to_owned())))
+    let recip = EmailAddress::address(&info.email);
+
+    let message = Message {
+        to: vec![recip],
+        subject: "BoilerRate Verification".to_owned(),
+        html: format!(
+            r#"
+            <h3>Welcome to BoilerRate!</h3>
+            <p>Please verify your account with the link below</p>
+            <a href="{}">Verify</a>
+        "#,
+            verification_link
+        ),
+        ..Default::default()
+    };
+
+    let sender = EmailAddress::name_address("verify", "verify@mail.boilerrate.com");
+
+    app_state
+        .mailgun
+        .async_send(MailgunRegion::US, &sender, message, None)
+        .await
+        .map_err(|e| {
+            println!("{}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok(ResponseJson(CreateUserResponse::Success(
+        "Email sent to user".to_owned(),
+    )))
 }
 
 #[derive(Deserialize)]
 pub struct VerificationRequest {
-    token: String
+    token: String,
 }
 
 pub async fn verify_registration(
@@ -149,16 +174,17 @@ pub async fn verify_registration(
         token: params.token,
     };
 
-    let claims = jwt.verify(&app_state.private_key)
+    let claims = jwt
+        .verify(&app_state.private_key)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Verify that the token is still valid for its timestamp
-    let current_time: Duration = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap();
+    let current_time: Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
 
     let stamp_time: Duration = Duration::from_secs(
-        claims["verification_ts"].parse().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        claims["verification_ts"]
+            .parse()
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
     );
 
     if current_time > stamp_time {
@@ -170,7 +196,7 @@ pub async fn verify_registration(
                  </h1>
                 </html>
             "#
-        )))
+        )));
     }
 
     let user = db::User {
@@ -244,8 +270,8 @@ pub async fn login(
     let mut claims: Claims = BTreeMap::new();
     claims.insert("email".to_owned(), info.email);
 
-    let jwt = JWT::new(claims, &app_state.private_key)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let jwt =
+        JWT::new(claims, &app_state.private_key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(ResponseJson(LoginResponse::Success { jwt }))
 }
