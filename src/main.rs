@@ -10,7 +10,7 @@ extern crate dotenv;
 use dotenv::dotenv;
 use supabase_rs::{SupabaseClient, graphql::utils::format_endpoint::endpoint};
 
-use mailgun_rs::{Mailgun}
+use mailgun_rs::{Mailgun};
 
 mod db;
 mod endpoints;
@@ -38,9 +38,9 @@ async fn main() {
     let email_domain = std::env::var("MAILGUN_DOMAIN").expect("No MAILGUN_DOMAIN");
 
     let mailgun = Mailgun {
-        api_key = mailgun_api_key,
+        api_key: mailgun_api_key,
         domain: email_domain,
-    }
+    };
 
     let app_state = Arc::new(endpoints::AppState {
         private_key: Hmac::new_from_slice(secret.as_bytes()).unwrap(),
