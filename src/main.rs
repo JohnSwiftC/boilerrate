@@ -10,6 +10,8 @@ extern crate dotenv;
 use dotenv::dotenv;
 use supabase_rs::{SupabaseClient, graphql::utils::format_endpoint::endpoint};
 
+use mailgun_rs::{Mailgun}
+
 mod db;
 mod endpoints;
 mod oauth;
@@ -31,11 +33,20 @@ async fn main() {
         client_secret: std::env::var("L_SECRET").expect("No L_SECRET"),
     };
 
+    let mailgun_api_key = std::env::var("MAILGUN_KEY").expect("No MAILGUN_KEY");
+
+    let email_domain = std::env::var("MAILGUN_DOMAIN").expect("No MAILGUN_DOMAIN");
+
+    let mailgun = Mailgun {
+        api_key = mailgun_api_key,
+        domain: email_domain,
+    }
 
     let app_state = Arc::new(endpoints::AppState {
         private_key: Hmac::new_from_slice(secret.as_bytes()).unwrap(),
         supabase_client: Arc::new(supabase_client),
         l_config: Arc::new(linkedin_config),
+        mailgun: Arc::new(mailgun),
     });
 
     let router = Router::new()

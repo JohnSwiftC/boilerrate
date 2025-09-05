@@ -23,12 +23,15 @@ use sha2::Sha384;
 use serde_json::Value;
 use supabase_rs::SupabaseClient;
 
+use mailgun_rs::{Mailgun};
+
 pub type Claims = BTreeMap<String, String>;
 
 pub struct AppState {
     pub private_key: Hmac<Sha384>,
     pub supabase_client: Arc<SupabaseClient>,
     pub l_config: Arc<oauth::LinkedInConfig>,
+    pub mailgun: Arc<Mailgun>,
 }
 
 #[derive(Serialize)]
@@ -127,7 +130,8 @@ pub async fn post_new_user(
 
     let verification_link = format!("https://api.boilerrate.com/verify?token={}", jwt.as_str());
 
-    // Construct and send message with gmail api
+    
+    // Actually use postgun api for this, need to set up smtp
 
     Ok(ResponseJson(CreateUserResponse::Success("Email sent to user".to_owned())))
 }
