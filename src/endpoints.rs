@@ -12,6 +12,7 @@ use crate::oauth;
 use axum::{
     extract::Json,
     extract::State,
+    extract::Form,
     http::{HeaderMap, StatusCode},
     response::Html,
     response::Json as ResponseJson,
@@ -170,15 +171,93 @@ pub async fn verify_registration(
     Query(params): Query<VerificationRequest>,
     State(app_state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, StatusCode> {
+    
+    // Show user a form to verify with
+    // Had to do this because some email providers, like purdue, will scan links with a get request
+    // would verify email under previous setup
+    Ok(Html(format!(
+        r#"
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>User Verification</title>
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        max-width: 400px;
+                        margin: 50px auto;
+                        padding: 20px;
+                        background-color: #f5f5f5;
+                    }}
+                    .verification-form {{
+                        background: white;
+                        padding: 30px;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                        text-align: center;
+                    }}
+                    h2 {{
+                        color: #333;
+                        margin-bottom: 20px;
+                    }}
+                    .verify-btn {{
+                        background-color: #007bff;
+                        color: white;
+                        padding: 12px 30px;
+                        border: none;
+                        border-radius: 4px;
+                        font-size: 16px;
+                        cursor: pointer;
+                        transition: background-color 0.3s;
+                    }}
+                    .verify-btn:hover {{
+                        background-color: #0056b3;
+                    }}
+                    .verify-btn:active {{
+                        transform: translateY(1px);
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="verification-form">
+                    <h2>Click to Verify Your Email</h2>
+                    <form action="/verify" method="POST">
+                        <input type="hidden" name="token" value="{}">
+                        <button type="submit" class="verify-btn">Verify</button>
+                    </form>
+                </div>
+            </body>
+            </html>
+        "#, params.token
+    )))
+}
+
+#[derive(Deserialize)]
+pub struct VerifyFormRequest {
+    token: String,
+}
+
+#[derive(Serialize)]
+pub struct VerifyFormResponse {
+    ok: bool,
+}
+
+#[axum::debug_handler]
+pub async fn verify_form(
+    State(app_state): State<Arc<AppState>>,
+    Form(req): Form<VerifyFormRequest>
+) -> Result<ResponseJson<VerifyFormResponse>, StatusCode> {
+
     let jwt = JWT {
-        token: params.token,
+        token: req.token,
     };
 
-    let claims = jwt
-        .verify(&app_state.private_key)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let claims = jwt.verify(&app_state.private_key)
+        .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
-    // Verify that the token is still valid for its timestamp
+     // Verify that the token is still valid for its timestamp
     let current_time: Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
 
     let stamp_time: Duration = Duration::from_secs(
@@ -188,15 +267,13 @@ pub async fn verify_registration(
     );
 
     if current_time > stamp_time {
-        return Ok(Html(format!(
-            r#"
-                <html>
-                 <h1>
-                 Your account creation request has expired. Please try again.
-                 </h1>
-                </html>
-            "#
-        )));
+        return Ok(
+            ResponseJson(
+                VerifyFormResponse {
+                    ok: false,
+                }
+            )
+        );
     }
 
     let user = db::User {
@@ -212,20 +289,11 @@ pub async fn verify_registration(
 
     let db_resp = app_state.supabase_client.insert("Users", user).await;
 
-    if let Err(e) = db_resp {
+    if let Err(_) = db_resp {
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     }
 
-    // Redirect user to frontend login page, maybe with a flag for a "email verified" notif
-    Ok(Html(format!(
-        r#"
-            <html>
-            <h1>
-                Email verified, please login
-            </h1>
-            </html>
-        "#
-    )))
+    Ok(ResponseJson(VerifyFormResponse { ok: true }))
 }
 
 #[derive(Deserialize)]

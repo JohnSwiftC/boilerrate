@@ -54,6 +54,7 @@ async fn main() {
         .route("/auth_url", get(oauth::get_linkedin_auth_url))
         .route("/create_user", post(endpoints::post_new_user))
         .route("/verify", get(endpoints::verify_registration))
+        .route("/verify", post(endpoints::verify_form))
         .route("/oauth/get_route", get(oauth::get_linkedin_auth_url))
         .route("/oauth/callback", get(oauth::linkedin_callback))
         .route("/login", post(endpoints::login))
