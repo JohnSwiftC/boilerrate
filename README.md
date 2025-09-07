@@ -1,6 +1,5 @@
 # boilerrate
 
-Need to make sure I write proper structs for the JWT.
-Call back redirects
+Backend of boilerrate, a LinkedIn competition for Purdue students.
 
-Propbably some .env for the redirect domain (Arc in shared state?)
+Coming sometime October...
