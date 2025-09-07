@@ -3,12 +3,11 @@ use axum::{
     routing::{get, post},
 };
 use hmac::{Hmac, Mac};
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 extern crate dotenv;
 use dotenv::dotenv;
-use supabase_rs::{SupabaseClient, graphql::utils::format_endpoint::endpoint};
+use supabase_rs::{SupabaseClient};
 
 use mailgun_rs::Mailgun;
 

@@ -13,7 +13,7 @@ use axum::{
     extract::Json,
     extract::State,
     extract::Form,
-    http::{HeaderMap, StatusCode},
+    http::{StatusCode},
     response::Html,
     response::Json as ResponseJson,
 };
@@ -21,7 +21,6 @@ use axum::{
 use hmac::Hmac;
 use sha2::Sha384;
 
-use serde_json::Value;
 use supabase_rs::SupabaseClient;
 
 use mailgun_rs::{EmailAddress, Mailgun, MailgunRegion, Message};
@@ -61,18 +60,6 @@ impl JWT {
 
         Err(())
     }
-}
-
-#[derive(Deserialize)]
-pub struct ObtainJWTRequest {
-    email: String,
-    password: String,
-}
-
-#[derive(Serialize)]
-pub struct VerifyJWTClaimsResponse {
-    claims: Claims,
-    verified: bool,
 }
 
 pub async fn get_root() -> &'static str {
@@ -239,16 +226,11 @@ pub struct VerifyFormRequest {
     token: String,
 }
 
-#[derive(Serialize)]
-pub struct VerifyFormResponse {
-    ok: bool,
-}
-
 #[axum::debug_handler]
 pub async fn verify_form(
     State(app_state): State<Arc<AppState>>,
     Form(req): Form<VerifyFormRequest>
-) -> Result<ResponseJson<VerifyFormResponse>, StatusCode> {
+) -> Result<impl IntoResponse, StatusCode> {
 
     let jwt = JWT {
         token: req.token,
@@ -268,10 +250,14 @@ pub async fn verify_form(
 
     if current_time > stamp_time {
         return Ok(
-            ResponseJson(
-                VerifyFormResponse {
-                    ok: false,
-                }
+            Html (
+                r#"
+                    <html>
+                        <p>
+                            Sorry, the verification request has expired. Please create your account again.
+                        </p>
+                    </html>
+                "#
             )
         );
     }
@@ -293,7 +279,13 @@ pub async fn verify_form(
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     }
 
-    Ok(ResponseJson(VerifyFormResponse { ok: true }))
+    Ok(Html (
+        r#"
+            <p>
+                Placeholder, account verified, would redirect to frontend login page
+            </p>
+        "#
+    ))
 }
 
 #[derive(Deserialize)]

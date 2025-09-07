@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 
 use std::sync::Arc;
 
@@ -10,7 +10,7 @@ use axum::{
 use axum_extra::TypedHeader;
 use headers::{Authorization, authorization::Bearer};
 
-use crate::endpoints::{AppState, Claims, JWT};
+use crate::endpoints::{AppState, JWT};
 use urlencoding;
 
 pub struct LinkedInConfig {
