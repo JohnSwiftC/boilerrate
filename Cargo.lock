@@ -262,6 +262,7 @@ dependencies = [
  "sha2",
  "supabase_rs",
  "tokio",
+ "tower-http",
  "urlencoding",
 ]
 

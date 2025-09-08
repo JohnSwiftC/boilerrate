@@ -1,13 +1,16 @@
 use axum::{
-    Router,
-    routing::{get, post},
+    http::HeaderValue, routing::{get, post}, Router
 };
 use hmac::{Hmac, Mac};
+use reqwest::{header::{AUTHORIZATION, CONTENT_TYPE}, Method};
 use std::sync::Arc;
 
 extern crate dotenv;
 use dotenv::dotenv;
 use supabase_rs::{SupabaseClient};
+
+use tower_http::cors::{CorsLayer, Any};
+use std::time::Duration;
 
 use mailgun_rs::Mailgun;
 
@@ -48,6 +51,12 @@ async fn main() {
         mailgun: Arc::new(mailgun),
     });
 
+    let cors = CorsLayer::new()
+        .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers([CONTENT_TYPE, AUTHORIZATION])
+        .max_age(Duration::from_secs(3600));
+
     let router = Router::new()
         .route("/", get(endpoints::get_root))
         .route("/auth_url", get(oauth::get_linkedin_auth_url))
@@ -57,7 +66,8 @@ async fn main() {
         .route("/oauth/get_route", get(oauth::get_linkedin_auth_url))
         .route("/oauth/callback", get(oauth::linkedin_callback))
         .route("/login", post(endpoints::login))
-        .with_state(app_state);
+        .with_state(app_state)
+        .layer(cors);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
         .await
