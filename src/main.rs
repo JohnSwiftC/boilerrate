@@ -53,6 +53,7 @@ async fn main() {
 
     let cors = CorsLayer::new()
         .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+        .allow_origin("https://boilerrate.com".parse::<HeaderValue>().unwrap())
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers([CONTENT_TYPE, AUTHORIZATION])
         .max_age(Duration::from_secs(3600));
