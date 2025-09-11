@@ -10,11 +10,7 @@ use crate::db;
 use crate::oauth;
 
 use axum::{
-    extract::Json,
-    extract::State,
-    extract::Form,
-    http::{StatusCode},
-    response::Html,
+    extract::Form, extract::Json, extract::State, http::StatusCode, response::Html,
     response::Json as ResponseJson,
 };
 
@@ -158,7 +154,6 @@ pub async fn verify_registration(
     Query(params): Query<VerificationRequest>,
     State(app_state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    
     // Show user a form to verify with
     // Had to do this because some email providers, like purdue, will scan links with a get request
     // would verify email under previous setup
@@ -217,7 +212,8 @@ pub async fn verify_registration(
                 </div>
             </body>
             </html>
-        "#, params.token
+        "#,
+        params.token
     )))
 }
 
@@ -229,17 +225,15 @@ pub struct VerifyFormRequest {
 #[axum::debug_handler]
 pub async fn verify_form(
     State(app_state): State<Arc<AppState>>,
-    Form(req): Form<VerifyFormRequest>
+    Form(req): Form<VerifyFormRequest>,
 ) -> Result<impl IntoResponse, StatusCode> {
+    let jwt = JWT { token: req.token };
 
-    let jwt = JWT {
-        token: req.token,
-    };
-
-    let claims = jwt.verify(&app_state.private_key)
+    let claims = jwt
+        .verify(&app_state.private_key)
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
-     // Verify that the token is still valid for its timestamp
+    // Verify that the token is still valid for its timestamp
     let current_time: Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
 
     let stamp_time: Duration = Duration::from_secs(
@@ -249,17 +243,15 @@ pub async fn verify_form(
     );
 
     if current_time > stamp_time {
-        return Ok(
-            Html (
-                r#"
+        return Ok(Html(
+            r#"
                     <html>
                         <p>
                             Sorry, the verification request has expired. Please create your account again.
                         </p>
                     </html>
-                "#
-            )
-        );
+                "#,
+        ));
     }
 
     let user = db::User {
@@ -279,12 +271,10 @@ pub async fn verify_form(
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     }
 
-    Ok(Html (
+    Ok(Html(
         r#"
-            <p>
-                Placeholder, account verified, would redirect to frontend login page
-            </p>
-        "#
+            <meta http-equiv="refresh" content="0; url=https://boilerrate.com/login">
+        "#,
     ))
 }
 
