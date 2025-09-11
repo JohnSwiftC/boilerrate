@@ -28,6 +28,7 @@ pub struct AppState {
     pub supabase_client: Arc<SupabaseClient>,
     pub l_config: Arc<oauth::LinkedInConfig>,
     pub mailgun: Arc<Mailgun>,
+    pub register_secret: &'static str
 }
 
 #[derive(Serialize)]
@@ -66,6 +67,7 @@ pub async fn get_root() -> &'static str {
 pub struct CreateUserRequest {
     email: String,
     password: String,
+    secret: String,
 }
 
 #[derive(Serialize)]
@@ -84,6 +86,10 @@ pub async fn post_new_user(
     // Verify the following once I have supabase up
     // @purdue.edu email X
     // new user is actually created
+
+    if info.secret != app_state.register_secret {
+        return Err(StatusCode::UNAUTHORIZED)
+    }
 
     if !info.email.ends_with("@purdue.edu") {
         return Ok(ResponseJson(CreateUserResponse::Failure(String::from(

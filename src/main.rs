@@ -44,11 +44,15 @@ async fn main() {
         domain: email_domain,
     };
 
+    let register_secret: String = std::env::var("BACKEND_REGISTER_SECRET").expect("No BACKEND_REGISTER_SECRET");
+    let register_secret: &'static str = Box::new(register_secret).leak();
+
     let app_state = Arc::new(endpoints::AppState {
         private_key: Hmac::new_from_slice(secret.as_bytes()).unwrap(),
         supabase_client: Arc::new(supabase_client),
         l_config: Arc::new(linkedin_config),
         mailgun: Arc::new(mailgun),
+        register_secret
     });
 
     let cors = CorsLayer::new()
