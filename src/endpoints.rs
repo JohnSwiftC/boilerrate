@@ -329,7 +329,7 @@ pub async fn login(
     if user["linkedin_conn"] == true {
         claims.insert("conn".to_owned(), true.to_string());
     } else {
-        claims.insert("conn".to_owned(), true.to_string());
+        claims.insert("conn".to_owned(), false.to_string());
     }
 
     let jwt =
