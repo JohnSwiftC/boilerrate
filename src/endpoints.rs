@@ -326,6 +326,12 @@ pub async fn login(
     let mut claims: Claims = BTreeMap::new();
     claims.insert("email".to_owned(), info.email);
 
+    if user["linkedin_conn"] == true {
+        claims.insert("conn".to_owned(), true.to_string());
+    } else {
+        claims.insert("conn".to_owned(), true.to_string());
+    }
+
     let jwt =
         JWT::new(claims, &app_state.private_key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
