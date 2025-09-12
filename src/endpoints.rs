@@ -97,11 +97,6 @@ pub async fn post_new_user(
         ))));
     }
 
-    let header = Header {
-        algorithm: jwt::AlgorithmType::Hs384,
-        ..Default::default()
-    };
-
     let mut time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
 
     time += Duration::from_secs(1800);
@@ -111,11 +106,9 @@ pub async fn post_new_user(
     claims.insert("password".to_owned(), info.password);
     claims.insert("verification_ts".to_owned(), time.as_secs().to_string());
 
-    let jwt = Token::new(header, claims)
-        .sign_with_key(&app_state.private_key)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let jwt = JWT::new(claims, &app_state.private_key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let verification_link = format!("https://api.boilerrate.com/verify?token={}", jwt.as_str());
+    let verification_link = format!("https://api.boilerrate.com/verify?token={}", jwt.token.as_str());
 
     // Actually use postgun api for this, thanks railway
 

@@ -1,6 +1,6 @@
 use serde::{Deserialize};
 
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use axum::{
     extract::Query, extract::State, http::StatusCode, response::Html, response::IntoResponse,
@@ -219,13 +219,17 @@ pub async fn linkedin_callback(
 
     println!("Database updated successfully");
 
+    let mut updated_claims = BTreeMap::new();
+
+    updated_claims.insert("email".to_owned(), claims["email"].to_owned());
+    updated_claims.insert("conn".to_owned(), true.to_string());
+
+    let token = JWT::new(updated_claims, &app_state.private_key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
     Ok(Html(format!(
         r#"
-        <html>
-        <h1>{} {}</h1>
-        <img src="{}"></img>
-        </html>
-    "#,
-        user_info.localized_first_name, user_info.localized_last_name, link_clone
+            <meta http-equiv="refresh" content="0; url=https://boilerrate.com/updateauth?token={}">
+        "#,
+        token.token.as_str()
     )))
 }
