@@ -328,7 +328,7 @@ pub async fn login(
         claims.insert("conn".to_owned(), false.to_string());
     }
 
-    claims.insert("photo".to_owned(), user["photo"].as_str().unwrap_or_default().to_owned());
+    claims.insert("photo".to_owned(), user["image"].as_str().unwrap_or_default().to_owned());
 
     let jwt =
         JWT::new(claims, &app_state.private_key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
