@@ -289,6 +289,9 @@ pub enum LoginResponse {
     Failure(String),
 }
 
+// need to include linkedin photo for login token
+// photo field on jwt
+
 pub async fn login(
     State(app_state): State<Arc<AppState>>,
     Json(info): Json<LoginRequest>,
@@ -324,6 +327,8 @@ pub async fn login(
     } else {
         claims.insert("conn".to_owned(), false.to_string());
     }
+
+    claims.insert("photo".to_owned(), user["photo"].as_str().unwrap_or_default().to_owned());
 
     let jwt =
         JWT::new(claims, &app_state.private_key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
