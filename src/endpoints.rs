@@ -1,5 +1,8 @@
 use axum::extract::Query;
 use axum::response::IntoResponse;
+use axum_extra::TypedHeader;
+use headers::authorization::Bearer;
+use headers::Authorization;
 use jwt::{Header, SignWithKey, Token, VerifyWithKey};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -334,4 +337,18 @@ pub async fn login(
         JWT::new(claims, &app_state.private_key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(ResponseJson(LoginResponse::Success { jwt }))
+}
+
+#[derive(Serialize)]
+struct UserInfoResponse {
+    name: String,
+    photo: String,
+    conn: bool,
+}
+
+pub async fn get_user_info(
+    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
+    State(app_state): State<Arc<AppState>>,
+) -> Result<ResponseJson<UserInfoResponse>, StatusCode> {
+   // finish 
 }
