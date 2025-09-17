@@ -1,5 +1,6 @@
 use axum::extract::Query;
 use axum::response::IntoResponse;
+use axum_extra::TypedHeader;
 use jwt::{Header, SignWithKey, Token, VerifyWithKey};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -334,4 +335,49 @@ pub async fn login(
         JWT::new(claims, &app_state.private_key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(ResponseJson(LoginResponse::Success { jwt }))
+}
+
+use headers::{Authorization, authorization::Bearer};
+
+#[derive(Serialize)]
+pub struct UserInfo {
+    conn: bool,
+    photo: Option<String>,
+    name: Option<String>,
+}
+
+pub async fn get_user_data(
+    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
+    State(app_state): State<Arc<AppState>>,
+) -> Result<ResponseJson<UserInfo>, StatusCode> {
+    let jwt = JWT {
+        token: auth.token().to_owned(),
+    };
+
+    let claims = jwt.verify(&app_state.private_key)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let user = app_state
+        .supabase_client
+        .select("Users")
+        .eq("email", &claims["email"])
+        .execute()
+        .await
+        .map_err(|_| StatusCode::NOT_FOUND)?;
+
+    let user = match user.get(0) {
+        Some(u) => u,
+        None => {
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let user = UserInfo {
+        conn: user["linkedin_conn"].as_bool().unwrap(),
+        photo: user["image"].as_str().and_then(|s| Some(s.to_owned())),
+        name: user["name"].as_str().and_then(|s| Some(s.to_owned())),
+    };
+
+    Ok(ResponseJson(user))
+
 }

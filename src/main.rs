@@ -71,6 +71,7 @@ async fn main() {
         .route("/oauth/get_route", get(oauth::get_linkedin_auth_url))
         .route("/oauth/callback", get(oauth::linkedin_callback))
         .route("/login", post(endpoints::login))
+        .route("/userinfo", get(endpoints::get_user_data))
         .with_state(app_state)
         .layer(cors);
 
