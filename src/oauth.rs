@@ -222,8 +222,6 @@ pub async fn linkedin_callback(
     let mut updated_claims = BTreeMap::new();
 
     updated_claims.insert("email".to_owned(), claims["email"].to_owned());
-    updated_claims.insert("conn".to_owned(), true.to_string());
-    updated_claims.insert("photo".to_owned(), link_clone);
 
     let token = JWT::new(updated_claims, &app_state.private_key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

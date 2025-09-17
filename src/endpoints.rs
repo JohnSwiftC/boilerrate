@@ -323,14 +323,6 @@ pub async fn login(
     let mut claims: Claims = BTreeMap::new();
     claims.insert("email".to_owned(), info.email);
 
-    if user["linkedin_conn"] == true {
-        claims.insert("conn".to_owned(), true.to_string());
-    } else {
-        claims.insert("conn".to_owned(), false.to_string());
-    }
-
-    claims.insert("photo".to_owned(), user["image"].as_str().unwrap_or_default().to_owned());
-
     let jwt =
         JWT::new(claims, &app_state.private_key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -342,6 +334,7 @@ use headers::{Authorization, authorization::Bearer};
 #[derive(Serialize)]
 pub struct UserInfo {
     conn: bool,
+    email: String,
     photo: Option<String>,
     name: Option<String>,
 }
@@ -374,6 +367,7 @@ pub async fn get_user_data(
 
     let user = UserInfo {
         conn: user["linkedin_conn"].as_bool().unwrap(),
+        email: claims["email"].clone(),
         photo: user["image"].as_str().and_then(|s| Some(s.to_owned())),
         name: user["name"].as_str().and_then(|s| Some(s.to_owned())),
     };
