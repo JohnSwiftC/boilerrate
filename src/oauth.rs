@@ -166,12 +166,7 @@ pub async fn linkedin_callback(
         token: params.state,
     };
 
-    let claims = jwt.verify(&app_state.private_key).map_err(|e| {
-        println!("JWT verification failed: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    println!("JWT verified, updating database...");
+    let email: String = jwt.get_email(&app_state.private_key).map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     let profile_pic = user_info
         .profile_picture
@@ -210,7 +205,7 @@ pub async fn linkedin_callback(
 
     app_state
         .supabase_client
-        .update_with_column_name("Users", "email", &claims["email"], db_update)
+        .update_with_column_name("Users", "email", &email, db_update)
         .await
         .map_err(|e| {
             println!("Database update failed: {:?}", e);
@@ -221,7 +216,7 @@ pub async fn linkedin_callback(
 
     let mut updated_claims = BTreeMap::new();
 
-    updated_claims.insert("email".to_owned(), claims["email"].to_owned());
+    updated_claims.insert("email".to_owned(), email);
 
     let token = JWT::new(updated_claims, &app_state.private_key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

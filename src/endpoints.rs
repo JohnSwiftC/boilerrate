@@ -366,13 +366,12 @@ pub async fn get_user_data(
         token: auth.token().to_owned(),
     };
 
-    let claims = jwt.verify(&app_state.private_key)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let email = jwt.get_email(&app_state.private_key).map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     let user = app_state
         .supabase_client
         .select("Users")
-        .eq("email", &claims["email"])
+        .eq("email", &email)
         .execute()
         .await
         .map_err(|_| StatusCode::NOT_FOUND)?;
@@ -386,7 +385,7 @@ pub async fn get_user_data(
 
     let user = UserInfo {
         conn: user["linkedin_conn"].as_bool().unwrap(),
-        email: claims["email"].clone(),
+        email: email,
         photo: user["image"].as_str().and_then(|s| Some(s.to_owned())),
         name: user["name"].as_str().and_then(|s| Some(s.to_owned())),
     };
