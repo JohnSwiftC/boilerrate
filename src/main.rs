@@ -55,6 +55,13 @@ async fn main() {
         register_secret
     });
 
+    // Add an auth router for routes that requires
+    // specifically an email with an authenticated user session
+    
+    let auth_router = Router::new()
+        .route("/oauth/get_route", get(oauth::get_linkedin_auth_url)) 
+        .route("/userinfo", get(endpoints::get_user_data));
+
     let cors = CorsLayer::new()
         .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
         .allow_origin("https://boilerrate.com".parse::<HeaderValue>().unwrap())
@@ -63,15 +70,13 @@ async fn main() {
         .max_age(Duration::from_secs(3600));
 
     let router = Router::new()
+        .nest("/", auth_router)
         .route("/", get(endpoints::get_root))
-        .route("/auth_url", get(oauth::get_linkedin_auth_url))
         .route("/create_user", post(endpoints::post_new_user))
         .route("/verify", get(endpoints::verify_registration))
         .route("/verify", post(endpoints::verify_form))
-        .route("/oauth/get_route", get(oauth::get_linkedin_auth_url))
-        .route("/oauth/callback", get(oauth::linkedin_callback))
         .route("/login", post(endpoints::login))
-        .route("/userinfo", get(endpoints::get_user_data))
+        .route("/oauth/callback", get(oauth::linkedin_callback))
         .with_state(app_state)
         .layer(cors);
 
