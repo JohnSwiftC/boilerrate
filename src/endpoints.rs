@@ -32,6 +32,12 @@ pub struct AppState {
     pub register_secret: &'static str
 }
 
+#[derive(Debug)]
+pub enum JWTError {
+    VerificationFailure,
+    FieldFailure(String),
+}
+
 #[derive(Serialize)]
 pub struct JWT {
     pub token: String,
@@ -51,12 +57,25 @@ impl JWT {
         })
     }
     /// Consumes the JWT
-    pub fn verify(self, key: &Hmac<Sha384>) -> Result<Claims, ()> {
+    pub fn verify(self, key: &Hmac<Sha384>) -> Result<Claims, JWTError> {
         if let Ok(claims) = self.token.verify_with_key(key) {
             return Ok(claims);
         }
 
-        Err(())
+        Err(JWTError::VerificationFailure)
+    }
+
+    pub fn get_email(self, key: &Hmac<Sha384>) -> Result<String, JWTError> {
+        if let Ok(claims) = self.verify(key) {
+            
+            if let Some(email) = claims.get::<String>(&"email".to_owned()) {
+                return Ok(email.clone());
+            } else {
+                return Err(JWTError::FieldFailure(String::from("No email field found")))
+            }
+        } else {
+            return Err(JWTError::VerificationFailure)
+        }
     }
 }
 
