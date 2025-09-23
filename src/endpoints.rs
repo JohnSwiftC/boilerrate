@@ -66,7 +66,9 @@ impl JWT {
     }
 
     pub fn get_email(self, key: &Hmac<Sha384>) -> Result<String, JWTError> {
-        if let Ok(claims) = self.verify(key) {
+        let claims: Result<Claims, _> = self.token.verify_with_key(key);
+        
+        if let Ok(claims) = claims {
             
             if let Some(email) = claims.get::<String>(&"email".to_owned()) {
                 return Ok(email.clone());
@@ -76,6 +78,7 @@ impl JWT {
         } else {
             return Err(JWTError::VerificationFailure)
         }
+        
     }
 }
 
