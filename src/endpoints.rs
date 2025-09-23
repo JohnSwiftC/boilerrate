@@ -1,6 +1,9 @@
+use axum::body::Body;
 use axum::extract::Query;
+use axum::http::Request;
+use axum::middleware::Next;
 use axum::response::IntoResponse;
-use axum_extra::TypedHeader;
+use axum::response::Response;
 use jwt::{Header, SignWithKey, Token, VerifyWithKey};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -11,7 +14,7 @@ use crate::db;
 use crate::oauth;
 
 use axum::{
-    extract::Form, extract::Json, extract::State, http::StatusCode, response::Html,
+    extract::Form, extract::Extension, extract::Json, extract::State, http::StatusCode, response::Html,
     response::Json as ResponseJson,
 };
 
@@ -362,14 +365,9 @@ pub struct UserInfo {
 }
 
 pub async fn get_user_data(
-    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
+    Extension(email): Extension<String>,
     State(app_state): State<Arc<AppState>>,
 ) -> Result<ResponseJson<UserInfo>, StatusCode> {
-    let jwt = JWT {
-        token: auth.token().to_owned(),
-    };
-
-    let email = jwt.get_email(&app_state.private_key).map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     let user = app_state
         .supabase_client
@@ -395,4 +393,38 @@ pub async fn get_user_data(
 
     Ok(ResponseJson(user))
 
+}
+
+
+
+pub async fn auth_middleware(
+    State(app_state): State<Arc<AppState>>,
+    request: Request<Body>,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let auth_header = request
+        .headers()
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|header| header.to_str().ok());
+
+    let token = match auth_header {
+        Some(header) if header.starts_with("Bearer ") => {
+            &header[7..]
+        }
+        _ => {
+            return Err(StatusCode::UNAUTHORIZED);
+        }
+    };
+
+    let jwt: JWT = JWT {
+        token: token.to_owned()
+    };
+
+    let email: String = jwt.get_email(&app_state.private_key)
+        .map_err(|_| StatusCode::UNAUTHORIZED)?;
+    
+    let mut request = request;
+    request.extensions_mut().insert(email);
+    
+    Ok(next.run(request).await)
 }

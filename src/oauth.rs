@@ -5,6 +5,7 @@ use std::{collections::BTreeMap, sync::Arc};
 use axum::{
     extract::Query, extract::State, http::StatusCode, response::Html, response::IntoResponse,
     response::Json as ResponseJson,
+    extract::Extension
 };
 
 use axum_extra::TypedHeader;

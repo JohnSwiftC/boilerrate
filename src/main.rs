@@ -1,5 +1,5 @@
 use axum::{
-    http::HeaderValue, routing::{get, post}, Router
+    extract::Request, http::HeaderValue, middleware::Next, response::Response, routing::{get, post}, Router
 };
 use hmac::{Hmac, Mac};
 use reqwest::{header::{AUTHORIZATION, CONTENT_TYPE}, Method};
@@ -59,8 +59,8 @@ async fn main() {
     // specifically an email with an authenticated user session
     
     let auth_router = Router::new()
-        .route("/oauth/get_route", get(oauth::get_linkedin_auth_url)) 
-        .route("/userinfo", get(endpoints::get_user_data));
+        .route("/userinfo", get(endpoints::get_user_data))
+        .layer(axum::middleware::from_fn_with_state(Arc::clone(&app_state), endpoints::auth_middleware));
 
     let cors = CorsLayer::new()
         .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
@@ -70,13 +70,14 @@ async fn main() {
         .max_age(Duration::from_secs(3600));
 
     let router = Router::new()
-        .nest("/", auth_router)
+        .nest("/auth", auth_router)
         .route("/", get(endpoints::get_root))
         .route("/create_user", post(endpoints::post_new_user))
         .route("/verify", get(endpoints::verify_registration))
         .route("/verify", post(endpoints::verify_form))
         .route("/login", post(endpoints::login))
         .route("/oauth/callback", get(oauth::linkedin_callback))
+        .route("/oauth/get_route", get(oauth::get_linkedin_auth_url)) 
         .with_state(app_state)
         .layer(cors);
 
