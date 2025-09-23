@@ -9,7 +9,7 @@ extern crate dotenv;
 use dotenv::dotenv;
 use supabase_rs::{SupabaseClient};
 
-use tower_http::cors::{CorsLayer, Any};
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use std::time::Duration;
 
 use mailgun_rs::Mailgun;
@@ -63,8 +63,10 @@ async fn main() {
         .layer(axum::middleware::from_fn_with_state(Arc::clone(&app_state), endpoints::auth_middleware));
 
     let cors = CorsLayer::new()
-        .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
-        .allow_origin("https://boilerrate.com".parse::<HeaderValue>().unwrap())
+        .allow_origin(AllowOrigin::list([
+            "http://localhost:3000".parse::<HeaderValue>().unwrap(),
+            "https://boilerrate.com".parse::<HeaderValue>().unwrap(),
+        ]))
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers([CONTENT_TYPE, AUTHORIZATION])
         .max_age(Duration::from_secs(3600));
