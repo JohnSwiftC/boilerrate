@@ -123,6 +123,24 @@ pub async fn post_new_user(
         ))));
     }
 
+    // Check to see if user is already registered
+
+    // I love rust
+    let registered = {
+        app_state.supabase_client
+            .select("Users")
+            .eq("email", &info.email)
+            .count()
+            .execute()
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .get(0)
+            .map(|v| if v != 0 { true } else { false })
+            .unwrap_or(false)
+    };
+
+    if registered { return Ok(ResponseJson(CreateUserResponse::Failure(String::from("User already exists!"))))}
+
     let mut time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
 
     time += Duration::from_secs(1800);
