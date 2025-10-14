@@ -57,10 +57,6 @@ async fn main() {
 
     // Add an auth router for routes that requires
     // specifically an email with an authenticated user session
-    
-    let auth_router = Router::new()
-        .route("/userinfo", get(endpoints::get_user_data))
-        .layer(axum::middleware::from_fn_with_state(Arc::clone(&app_state), endpoints::auth_middleware));
 
     let cors = CorsLayer::new()
         .allow_origin(AllowOrigin::list([
@@ -70,6 +66,11 @@ async fn main() {
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers([CONTENT_TYPE, AUTHORIZATION])
         .max_age(Duration::from_secs(3600));
+
+    let auth_router = Router::new()
+        .route("/userinfo", get(endpoints::get_user_data))
+        .layer(axum::middleware::from_fn_with_state(Arc::clone(&app_state), endpoints::auth_middleware))
+        .layer(cors.clone());
 
     let router = Router::new()
         .nest("/auth", auth_router)

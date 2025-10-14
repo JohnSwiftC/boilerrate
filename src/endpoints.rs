@@ -14,7 +14,7 @@ use crate::db;
 use crate::oauth;
 
 use axum::{
-    extract::Form, extract::Extension, extract::Json, extract::State, http::StatusCode, response::Html,
+    extract::Form, extract::Extension,  extract::Json, extract::State, http::StatusCode, response::Html,
     response::Json as ResponseJson,
 };
 
