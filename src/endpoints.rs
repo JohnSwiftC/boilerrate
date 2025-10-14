@@ -14,8 +14,8 @@ use crate::db;
 use crate::oauth;
 
 use axum::{
-    extract::Form, extract::Extension,  extract::Json, extract::State, http::StatusCode, response::Html,
-    response::Json as ResponseJson,
+    extract::Extension, extract::Form, extract::Json, extract::State, http::StatusCode,
+    response::Html, response::Json as ResponseJson,
 };
 
 use hmac::Hmac;
@@ -32,7 +32,7 @@ pub struct AppState {
     pub supabase_client: Arc<SupabaseClient>,
     pub l_config: Arc<oauth::LinkedInConfig>,
     pub mailgun: Arc<Mailgun>,
-    pub register_secret: &'static str
+    pub register_secret: &'static str,
 }
 
 #[derive(Debug)]
@@ -70,18 +70,16 @@ impl JWT {
 
     pub fn get_email(self, key: &Hmac<Sha384>) -> Result<String, JWTError> {
         let claims: Result<Claims, _> = self.token.verify_with_key(key);
-        
+
         if let Ok(claims) = claims {
-            
             if let Some(email) = claims.get::<String>(&"email".to_owned()) {
                 return Ok(email.clone());
             } else {
-                return Err(JWTError::FieldFailure(String::from("No email field found")))
+                return Err(JWTError::FieldFailure(String::from("No email field found")));
             }
         } else {
-            return Err(JWTError::VerificationFailure)
+            return Err(JWTError::VerificationFailure);
         }
-        
     }
 }
 
@@ -114,7 +112,7 @@ pub async fn post_new_user(
     // new user is actually created
 
     if info.secret != app_state.register_secret {
-        return Err(StatusCode::UNAUTHORIZED)
+        return Err(StatusCode::UNAUTHORIZED);
     }
 
     if !info.email.ends_with("@purdue.edu") {
@@ -127,7 +125,8 @@ pub async fn post_new_user(
 
     // I love rust
     let registered = {
-        app_state.supabase_client
+        app_state
+            .supabase_client
             .select("Users")
             .eq("email", &info.email)
             .count()
@@ -139,7 +138,11 @@ pub async fn post_new_user(
             .unwrap_or(false)
     };
 
-    if registered { return Ok(ResponseJson(CreateUserResponse::Failure(String::from("User already exists!"))))}
+    if registered {
+        return Ok(ResponseJson(CreateUserResponse::Failure(String::from(
+            "User already exists!",
+        ))));
+    }
 
     let mut time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
 
@@ -150,9 +153,13 @@ pub async fn post_new_user(
     claims.insert("password".to_owned(), info.password);
     claims.insert("verification_ts".to_owned(), time.as_secs().to_string());
 
-    let jwt = JWT::new(claims, &app_state.private_key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let jwt =
+        JWT::new(claims, &app_state.private_key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let verification_link = format!("https://api.boilerrate.com/verify?token={}", jwt.token.as_str());
+    let verification_link = format!(
+        "https://api.boilerrate.com/verify?token={}",
+        jwt.token.as_str()
+    );
 
     // Actually use postgun api for this, thanks railway
 
@@ -386,7 +393,6 @@ pub async fn get_user_data(
     Extension(email): Extension<String>,
     State(app_state): State<Arc<AppState>>,
 ) -> Result<ResponseJson<UserInfo>, StatusCode> {
-
     let user = app_state
         .supabase_client
         .select("Users")
@@ -410,10 +416,7 @@ pub async fn get_user_data(
     };
 
     Ok(ResponseJson(user))
-
 }
-
-
 
 pub async fn auth_middleware(
     State(app_state): State<Arc<AppState>>,
@@ -426,23 +429,22 @@ pub async fn auth_middleware(
         .and_then(|header| header.to_str().ok());
 
     let token = match auth_header {
-        Some(header) if header.starts_with("Bearer ") => {
-            &header[7..]
-        }
+        Some(header) if header.starts_with("Bearer ") => &header[7..],
         _ => {
             return Err(StatusCode::UNAUTHORIZED);
         }
     };
 
     let jwt: JWT = JWT {
-        token: token.to_owned()
+        token: token.to_owned(),
     };
 
-    let email: String = jwt.get_email(&app_state.private_key)
+    let email: String = jwt
+        .get_email(&app_state.private_key)
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
-    
+
     let mut request = request;
     request.extensions_mut().insert(email);
-    
+
     Ok(next.run(request).await)
 }

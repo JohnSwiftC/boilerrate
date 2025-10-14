@@ -1,16 +1,24 @@
 use axum::{
-    extract::Request, http::HeaderValue, middleware::Next, response::Response, routing::{get, post}, Router
+    Router,
+    extract::Request,
+    http::HeaderValue,
+    middleware::Next,
+    response::Response,
+    routing::{get, post},
 };
 use hmac::{Hmac, Mac};
-use reqwest::{header::{AUTHORIZATION, CONTENT_TYPE}, Method};
+use reqwest::{
+    Method,
+    header::{AUTHORIZATION, CONTENT_TYPE},
+};
 use std::sync::Arc;
 
 extern crate dotenv;
 use dotenv::dotenv;
-use supabase_rs::{SupabaseClient};
+use supabase_rs::SupabaseClient;
 
-use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use std::time::Duration;
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 use mailgun_rs::Mailgun;
 
@@ -44,7 +52,8 @@ async fn main() {
         domain: email_domain,
     };
 
-    let register_secret: String = std::env::var("BACKEND_REGISTER_SECRET").expect("No BACKEND_REGISTER_SECRET");
+    let register_secret: String =
+        std::env::var("BACKEND_REGISTER_SECRET").expect("No BACKEND_REGISTER_SECRET");
     let register_secret: &'static str = Box::new(register_secret).leak();
 
     let app_state = Arc::new(endpoints::AppState {
@@ -52,7 +61,7 @@ async fn main() {
         supabase_client: Arc::new(supabase_client),
         l_config: Arc::new(linkedin_config),
         mailgun: Arc::new(mailgun),
-        register_secret
+        register_secret,
     });
 
     // Add an auth router for routes that requires
@@ -69,7 +78,10 @@ async fn main() {
 
     let auth_router = Router::new()
         .route("/userinfo", get(endpoints::get_user_data))
-        .layer(axum::middleware::from_fn_with_state(Arc::clone(&app_state), endpoints::auth_middleware))
+        .layer(axum::middleware::from_fn_with_state(
+            Arc::clone(&app_state),
+            endpoints::auth_middleware,
+        ))
         .layer(cors.clone());
 
     let router = Router::new()
@@ -80,7 +92,7 @@ async fn main() {
         .route("/verify", post(endpoints::verify_form))
         .route("/login", post(endpoints::login))
         .route("/oauth/callback", get(oauth::linkedin_callback))
-        .route("/oauth/get_route", get(oauth::get_linkedin_auth_url)) 
+        .route("/oauth/get_route", get(oauth::get_linkedin_auth_url))
         .with_state(app_state)
         .layer(cors);
 

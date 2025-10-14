@@ -1,11 +1,10 @@
-use serde::{Deserialize};
+use serde::Deserialize;
 
 use std::{collections::BTreeMap, sync::Arc};
 
 use axum::{
-    extract::Query, extract::State, http::StatusCode, response::Html, response::IntoResponse,
-    response::Json as ResponseJson,
-    extract::Extension
+    extract::Extension, extract::Query, extract::State, http::StatusCode, response::Html,
+    response::IntoResponse, response::Json as ResponseJson,
 };
 
 use axum_extra::TypedHeader;
@@ -167,7 +166,9 @@ pub async fn linkedin_callback(
         token: params.state,
     };
 
-    let email: String = jwt.get_email(&app_state.private_key).map_err(|_| StatusCode::UNAUTHORIZED)?;
+    let email: String = jwt
+        .get_email(&app_state.private_key)
+        .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     let profile_pic = user_info
         .profile_picture
@@ -219,7 +220,8 @@ pub async fn linkedin_callback(
 
     updated_claims.insert("email".to_owned(), email);
 
-    let token = JWT::new(updated_claims, &app_state.private_key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let token = JWT::new(updated_claims, &app_state.private_key)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Html(format!(
         r#"
