@@ -201,8 +201,7 @@ pub struct VerificationRequest {
 }
 
 pub async fn verify_registration(
-    Query(params): Query<VerificationRequest>,
-    State(app_state): State<Arc<AppState>>,
+    Query(params): Query<VerificationRequest>
 ) -> Result<impl IntoResponse, StatusCode> {
     // Show user a form to verify with
     // Had to do this because some email providers, like purdue, will scan links with a get request
@@ -378,8 +377,6 @@ pub async fn login(
 
     Ok(ResponseJson(LoginResponse::Success { jwt }))
 }
-
-use headers::{Authorization, authorization::Bearer};
 
 #[derive(Serialize)]
 pub struct UserInfo {
