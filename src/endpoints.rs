@@ -328,6 +328,41 @@ pub async fn verify_form(
 }
 
 #[derive(Deserialize)]
+pub struct PasswordResetRequest {
+    email: String,
+}
+
+#[derive(Serialize)]
+pub struct PasswordResetResponse {
+    success: bool,
+    message: String,
+}
+
+pub async fn reset(
+    State(app_state): State<Arc<AppState>>,
+    Json(req): Json<PasswordResetRequest>,
+) -> Result<ResponseJson<PasswordResetResponse>, StatusCode> {
+    // Send a link with the permision to do this to the users email
+    
+    let user = app_state
+        .supabase_client
+        .select("Users")
+        .eq("email", &req.email)
+        .execute()
+        .await;
+
+    if let Err(e) = user {
+        return Ok(ResponseJson(PasswordResetResponse {
+            success: false,
+            message: e.to_string(),
+        }));
+    }
+
+    // TODO: Send email once user is verified to exist    
+    Err(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+#[derive(Deserialize)]
 pub struct LoginRequest {
     email: String,
     password: String,
