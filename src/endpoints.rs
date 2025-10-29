@@ -201,7 +201,7 @@ pub struct VerificationRequest {
 }
 
 pub async fn verify_registration(
-    Query(params): Query<VerificationRequest>
+    Query(params): Query<VerificationRequest>,
 ) -> Result<impl IntoResponse, StatusCode> {
     // Show user a form to verify with
     // Had to do this because some email providers, like purdue, will scan links with a get request
@@ -343,7 +343,7 @@ pub async fn reset(
     Json(req): Json<PasswordResetRequest>,
 ) -> Result<ResponseJson<PasswordResetResponse>, StatusCode> {
     // Send a link with the permision to do this to the users email
-    
+
     let user = app_state
         .supabase_client
         .select("Users")
@@ -358,8 +358,51 @@ pub async fn reset(
         }));
     }
 
-    // TODO: Send email once user is verified to exist    
-    Err(StatusCode::INTERNAL_SERVER_ERROR)
+    // Construct token
+
+    let mut claims: Claims = BTreeMap::new();
+    let current_time: Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+    let expiration_time: Duration = current_time + Duration::from_secs(1800);
+    claims.insert(String::from("email"), req.email.to_owned());
+    claims.insert(String::from("reset_ts"), expiration_time.as_secs().to_string());
+
+    let token: JWT = JWT::new(claims, &app_state.private_key).map_err(|_| {
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let reset_link: String = format!("https://api.boilerrate.com/reset_password?token={}", token.token);
+
+    let recip = EmailAddress::address(&req.email);
+
+    let message = Message {
+        to: vec![recip],
+        subject: "BoilerRate Verification".to_owned(),
+        html: format!(
+            r#"
+            <h3>BoilerRate Password Reset</h3>
+            <p>Please reset your account with the link below</p>
+            <a href="{}">Reset</a>
+        "#,
+            reset_link
+        ),
+        ..Default::default()
+    };
+
+    let sender = EmailAddress::name_address("reset", "reset@mail.boilerrate.com");
+
+    app_state
+        .mailgun
+        .async_send(MailgunRegion::US, &sender, message, None)
+        .await
+        .map_err(|e| {
+            println!("{}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    Ok(ResponseJson(PasswordResetResponse {
+        success: true,
+        message: "Password reset email sent!".to_owned(),
+    }))
 }
 
 #[derive(Deserialize)]
