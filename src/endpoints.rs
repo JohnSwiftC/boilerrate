@@ -406,6 +406,75 @@ pub async fn reset(
 }
 
 #[derive(Deserialize)]
+pub struct PasswordResetQuery {
+    token: String,
+}
+
+pub async fn reset_form(
+    Query(params): Query<PasswordResetQuery>,
+) -> Result<impl IntoResponse, StatusCode> {
+
+    Ok(Html(format!(
+        r#"
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>User Verification</title>
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        max-width: 400px;
+                        margin: 50px auto;
+                        padding: 20px;
+                        background-color: #f5f5f5;
+                    }}
+                    .verification-form {{
+                        background: white;
+                        padding: 30px;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                        text-align: center;
+                    }}
+                    h2 {{
+                        color: #333;
+                        margin-bottom: 20px;
+                    }}
+                    .verify-btn {{
+                        background-color: #007bff;
+                        color: white;
+                        padding: 12px 30px;
+                        border: none;
+                        border-radius: 4px;
+                        font-size: 16px;
+                        cursor: pointer;
+                        transition: background-color 0.3s;
+                    }}
+                    .verify-btn:hover {{
+                        background-color: #0056b3;
+                    }}
+                    .verify-btn:active {{
+                        transform: translateY(1px);
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="verification-form">
+                    <h2>Reset</h2>
+                    <form action="/update_password" method="POST">
+                        <input type="hidden" name="token" value="{}">
+                        <button type="submit" class="verify-btn">Verify</button>
+                    </form>
+                </div>
+            </body>
+            </html>
+        "#,
+        params.token
+    )))
+}
+
+#[derive(Deserialize)]
 pub struct LoginRequest {
     email: String,
     password: String,
